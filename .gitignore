@@ -14,5 +14,6 @@
 /.gradle-home
 /.adhoc-home
 /.kotlin
+/dist
 # 用户放置在本项目目录内的 Android Studio 安装（不纳入版本库）
 /Android Studio
