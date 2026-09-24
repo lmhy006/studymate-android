@@ -64,6 +64,7 @@ fun SettingsScreen(
 
     var showUpdateDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
+    var showRapidDialog by remember { mutableStateOf(false) }
     val toastContext = LocalContext.current
 
     if (showUpdateDialog) {
@@ -76,6 +77,16 @@ fun SettingsScreen(
                 entities.forEach { scheduleViewModel.save(it) }
                 Toast.makeText(toastContext, "已导入 ${entities.size} 条课程", Toast.LENGTH_SHORT).show()
                 showImportDialog = false
+            },
+        )
+    }
+    if (showRapidDialog) {
+        RapidEntryDialog(
+            onDismiss = { showRapidDialog = false },
+            onImport = { entities ->
+                entities.forEach { scheduleViewModel.save(it) }
+                Toast.makeText(toastContext, "已导入 ${entities.size} 门课", Toast.LENGTH_SHORT).show()
+                showRapidDialog = false
             },
         )
     }
@@ -136,6 +147,26 @@ fun SettingsScreen(
                         )
                     }
                     TextButton(onClick = { showImportDialog = true }) { Text("导入") }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showRapidDialog = true }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "逐课速录",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = "表单式录入课程/星期/节次/教学周，可连续添加多门",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = { showRapidDialog = true }) { Text("录入") }
                 }
             }
         }

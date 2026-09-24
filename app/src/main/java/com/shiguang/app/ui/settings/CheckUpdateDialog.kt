@@ -24,7 +24,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.shiguang.app.BuildConfig
-import com.shiguang.app.AppConfig
 import com.shiguang.app.update.AppVersion
 import com.shiguang.app.update.FetchResult
 import com.shiguang.app.update.ReleaseInfo
@@ -58,7 +57,7 @@ fun CheckUpdateDialog(onDismiss: () -> Unit) {
     LaunchedEffect(attempt) {
         state = UpdateUiState.Checking
         val local = BuildConfig.VERSION_NAME
-        when (val result = UpdateClient.fetchLatest(AppConfig.GITHUB_REPO)) {
+        when (val result = UpdateClient.fetchLatest()) {
             is FetchResult.Error -> state = UpdateUiState.Failed("网络不可用，请稍后重试")
             FetchResult.NoRelease -> state = UpdateUiState.NoRelease
             is FetchResult.Release -> {
@@ -151,7 +150,7 @@ fun CheckUpdateDialog(onDismiss: () -> Unit) {
                     TextButton(onClick = {
                         scope.launch {
                             state = UpdateUiState.Downloading
-                            val apk = UpdateClient.downloadApk(context, s.info.apkUrl!!)
+                            val apk = UpdateClient.downloadApkWithFallback(context, s.info.apkUrl!!)
                             state = if (apk != null) UpdateUiState.Ready(s.info, apk) else {
                                 UpdateUiState.Failed("下载失败，请检查网络后重试")
                             }

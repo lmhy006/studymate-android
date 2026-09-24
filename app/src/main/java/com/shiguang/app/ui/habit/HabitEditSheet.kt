@@ -116,32 +116,34 @@ fun HabitEditSheet(
                 }
             }
 
-            Text(
-                text = "打卡模式",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = mode == HabitEntity.MODE_CYCLIC,
-                    onClick = { mode = HabitEntity.MODE_CYCLIC },
-                    label = { Text("周期模式") },
+            if (type == TYPE_CUSTOM) {
+                Text(
+                    text = "打卡模式",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                FilterChip(
-                    selected = mode == HabitEntity.MODE_FREE,
-                    onClick = { mode = HabitEntity.MODE_FREE },
-                    label = { Text("自由模式") },
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = mode == HabitEntity.MODE_CYCLIC,
+                        onClick = { mode = HabitEntity.MODE_CYCLIC },
+                        label = { Text("周期模式") },
+                    )
+                    FilterChip(
+                        selected = mode == HabitEntity.MODE_FREE,
+                        onClick = { mode = HabitEntity.MODE_FREE },
+                        label = { Text("自由模式") },
+                    )
+                }
+                Text(
+                    text = if (mode == HabitEntity.MODE_CYCLIC) {
+                        "周期模式：按创建日锚定周期日，每 N 天到期一次，每周期最多打卡 1 次。"
+                    } else {
+                        "自由模式：可随时打卡；打卡后 N 天内再打即连续，超过 N 天未打卡记一次缺卡，下次打卡重新起算。"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Text(
-                text = if (mode == HabitEntity.MODE_CYCLIC) {
-                    "周期模式：按创建日锚定周期日，每 N 天到期一次，每周期最多打卡 1 次。"
-                } else {
-                    "自由模式：可随时打卡；打卡后 N 天内再打即连续，超过 N 天未打卡记一次缺卡，下次打卡重新起算。"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
 
             Text(
                 text = "打卡周期",
@@ -151,12 +153,19 @@ fun HabitEditSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = type == TYPE_DAILY,
-                    onClick = { type = TYPE_DAILY },
+                    onClick = {
+                        type = TYPE_DAILY
+                        // 每日/每周固定周期模式（与周期模式语义一致）
+                        mode = HabitEntity.MODE_CYCLIC
+                    },
                     label = { Text("每日") },
                 )
                 FilterChip(
                     selected = type == TYPE_WEEKLY,
-                    onClick = { type = TYPE_WEEKLY },
+                    onClick = {
+                        type = TYPE_WEEKLY
+                        mode = HabitEntity.MODE_CYCLIC
+                    },
                     label = { Text("每周") },
                 )
                 FilterChip(
