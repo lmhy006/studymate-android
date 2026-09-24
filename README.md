@@ -49,10 +49,10 @@
 
 ## 提交应用更新（发布新版本）
 
-应用内更新以 **GitHub Release** 为源（当前仓库 `lmhy006/studymate-android`）：
+应用内更新以 **GitHub Release** 为源（当前仓库 `lmhy006/studymate-android`）。完整检查清单见 **【docs/RELEASE.md】**，速览：
 
 1. 修改 `app/build.gradle.kts` 的 `versionName`（如 `1.0.1`），构建出新的 debug/release APK；
-2. 在 GitHub 创建 Release，**tag 命名为 `v` + 版本号**（如 `v1.0.1`）；
+2. 推送代码后，在 GitHub 创建 Release，**tag 命名为 `v` + 版本号**（如 `v1.0.1`）；
 3. 把 APK 作为该 Release 的 **asset** 上传（文件名以 `.apk` 结尾即可）；
 4. 手机端在 App 内「设置 → 检查更新」即可检测到新版本并下载安装。
 
