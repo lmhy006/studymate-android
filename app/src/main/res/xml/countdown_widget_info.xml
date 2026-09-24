@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  倒数日桌面小组件配置。
+  - 2x2 起步（minWidth/minHeight 110dp），可横向/纵向拉伸到更大尺寸；
+  - updatePeriodMillis=0：Glance 小组件由 WorkManager 定时 + 系统事件驱动刷新，
+    避免系统每 30 分钟一次的冗余更新。
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="UnusedAttribute"
+    android:description="@string/widget_desc"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:maxResizeHeight="240dp"
+    android:maxResizeWidth="360dp"
+    android:minHeight="110dp"
+    android:minResizeHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minWidth="110dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellHeight="2"
+    android:targetCellWidth="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

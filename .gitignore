@@ -1,0 +1,18 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/app/build
+/captures
+.externalNativeBuild
+.cxx
+# 本地构建工具链产物（验证用，不纳入版本库）
+/downloads
+/.android-sdk
+/.gradle-home
+/.adhoc-home
+/.kotlin
+# 用户放置在本项目目录内的 Android Studio 安装（不纳入版本库）
+/Android Studio

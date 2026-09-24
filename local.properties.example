@@ -1,0 +1,3 @@
+# 本文件是示例。用 Android Studio 打开项目后会自动生成真正的 local.properties，
+# 其中 sdk.dir 指向你本机的 Android SDK 目录，例如：
+# sdk.dir=C\:\\Users\\你的用户名\\AppData\\Local\\Android\\Sdk

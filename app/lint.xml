@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  lint 配置：以下检查为有意为之/不可避免：
+  - ObsoleteSdkInt：自适应图标必须放在 mipmap-anydpi-v26（minSdk 即 26，AAPT 要求 v26 限定目录）
+-->
+<lint>
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+</lint>
