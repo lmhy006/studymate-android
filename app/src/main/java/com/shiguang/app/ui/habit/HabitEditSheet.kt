@@ -35,8 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.shiguang.app.data.entity.HabitEntity
 
 private val EMOJI_PRESETS = listOf("📚", "🏃", "💪", "🧠", "✍️", "🎯", "🌱", "🧘", "💧", "😴")
 
@@ -47,18 +47,20 @@ private const val TYPE_CUSTOM = 2
 
 /**
  * 新增习惯底部弹层。
+ * mode：周期模式 / 自由模式（每个习惯可单独选择）；
  * intervalDays 由周期类型决定：每日=1，每周=7，自定义=用户输入的 N（至少 2）。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitEditSheet(
     onDismiss: () -> Unit,
-    onSave: (name: String, emoji: String, intervalDays: Int) -> Unit,
+    onSave: (name: String, emoji: String, intervalDays: Int, mode: Int) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var emoji by remember { mutableStateOf(EMOJI_PRESETS.first()) }
     var type by remember { mutableIntStateOf(TYPE_DAILY) }
     var customDays by remember { mutableStateOf("3") }
+    var mode by remember { mutableIntStateOf(HabitEntity.MODE_CYCLIC) }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -115,6 +117,33 @@ fun HabitEditSheet(
             }
 
             Text(
+                text = "打卡模式",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = mode == HabitEntity.MODE_CYCLIC,
+                    onClick = { mode = HabitEntity.MODE_CYCLIC },
+                    label = { Text("周期模式") },
+                )
+                FilterChip(
+                    selected = mode == HabitEntity.MODE_FREE,
+                    onClick = { mode = HabitEntity.MODE_FREE },
+                    label = { Text("自由模式") },
+                )
+            }
+            Text(
+                text = if (mode == HabitEntity.MODE_CYCLIC) {
+                    "周期模式：按创建日锚定周期日，每 N 天到期一次，每周期最多打卡 1 次。"
+                } else {
+                    "自由模式：可随时打卡；打卡后 N 天内再打即连续，超过 N 天未打卡记一次缺卡，下次打卡重新起算。"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Text(
                 text = "打卡周期",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -157,26 +186,11 @@ fun HabitEditSheet(
                         TYPE_WEEKLY -> 7
                         else -> customDays.toIntOrNull()?.coerceAtLeast(2) ?: 3
                     }
-                    onSave(name.trim(), emoji, interval)
+                    onSave(name.trim(), emoji, interval, mode)
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("创建习惯")
-            }
-
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-            ) {
-                Text(
-                    text = "说明：打卡按“周期日”计算——每日习惯每天到期一次；\n每 N 天的习惯从创建日起每 N 天到期一次，每周期最多打卡 1 次。",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Start,
-                )
             }
         }
     }

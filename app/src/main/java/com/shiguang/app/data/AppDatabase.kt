@@ -25,7 +25,7 @@ import com.shiguang.app.data.entity.ScheduleEntity
         HabitRecordEntity::class,
         ScheduleEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -44,6 +44,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v2 -> v3：habits 增加 mode 列（周期/自由两种打卡模式），默认周期模式。 */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habits ADD COLUMN mode INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -53,7 +60,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     DB_NAME,
-                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+                )
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .build().also { instance = it }
             }
     }
 }

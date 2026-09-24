@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.shiguang.app.StudyMateApp
 import com.shiguang.app.core.DateUtils
+import com.shiguang.app.core.HabitTimeline
 import com.shiguang.app.core.Recurrence
 import com.shiguang.app.core.Streak
 import com.shiguang.app.data.entity.HabitEntity
@@ -76,8 +77,8 @@ fun HabitScreen(
     if (showAdd) {
         HabitEditSheet(
             onDismiss = { showAdd = false },
-            onSave = { name, emoji, interval ->
-                viewModel.addHabit(name, emoji, interval)
+            onSave = { name, emoji, interval, mode ->
+                viewModel.addHabit(name, emoji, interval, mode)
                 showAdd = false
             },
         )
@@ -125,13 +126,20 @@ fun HabitScreen(
                 }
             }
 
+            // 今日待打卡（到截止/到期且未打卡）
             val dueHabits = state.habits.filter { habit ->
                 val checked = state.recordsByHabit[habit.id].orEmpty()
-                Recurrence.isTodayOccurrence(
-                    DateUtils.fromEpochDay(habit.startEpochDay),
-                    habit.intervalDays,
-                    state.today,
-                ) && state.today.toEpochDay() !in checked
+                val todayEpoch = state.today.toEpochDay()
+                if (todayEpoch in checked) return@filter false
+                if (habit.mode == HabitEntity.MODE_CYCLIC) {
+                    Recurrence.isTodayOccurrence(
+                        DateUtils.fromEpochDay(habit.startEpochDay),
+                        habit.intervalDays,
+                        state.today,
+                    )
+                } else {
+                    HabitTimeline.dueToday(checked.maxOrNull(), todayEpoch, habit.intervalDays)
+                }
             }
             if (dueHabits.isNotEmpty()) {
                 item {
@@ -207,8 +215,8 @@ private sealed interface DayStatus {
     data object Upcoming : DayStatus
 }
 
-/** 某天在习惯日历上的状态；非周期日返回 null。 */
-private fun dayStatus(
+/** 周期模式：固定周期日网格上的状态；非周期日返回 null。 */
+private fun cyclicDayStatus(
     habit: HabitEntity,
     checked: Set<Long>,
     today: LocalDate,
@@ -225,6 +233,22 @@ private fun dayStatus(
     }
 }
 
+/** 自由模式：已打卡 / 缺卡截止日 / 今日；其余不标记。 */
+private fun freeDayStatus(
+    checked: Set<Long>,
+    missedDays: Set<Long>,
+    todayEpoch: Long,
+    date: LocalDate,
+): DayStatus? {
+    val day = date.toEpochDay()
+    return when {
+        day in checked -> DayStatus.Checked
+        day in missedDays -> DayStatus.Missed
+        day == todayEpoch -> DayStatus.Due
+        else -> null
+    }
+}
+
 @Composable
 private fun HabitCard(
     habit: HabitEntity,
@@ -238,13 +262,43 @@ private fun HabitCard(
     onShiftMonth: (Int) -> Unit,
     onRequestDelete: () -> Unit,
 ) {
+    val todayEpoch = today.toEpochDay()
+    val checkedAll = checked.toList().sorted()
     val start = DateUtils.fromEpochDay(habit.startEpochDay)
-    val currentStreak = Streak.current(start, habit.intervalDays, checked, today)
-    val longest = Streak.longest(start, habit.intervalDays, checked, today)
-    val total = Streak.total(start, habit.intervalDays, checked, today)
-    val missed = Streak.missed(start, habit.intervalDays, checked, today)
-    val dueToday = Recurrence.isTodayOccurrence(start, habit.intervalDays, today)
-    val checkedToday = today.toEpochDay() in checked
+    val cyclic = habit.mode == HabitEntity.MODE_CYCLIC
+
+    val currentStreak: Int
+    val longest: Int
+    val total: Int
+    val missed: Int
+    val dueToday: Boolean
+    val checkedToday = todayEpoch in checked
+    val missedDeadlines: Set<Long>
+    val deadlineDate: LocalDate?
+
+    if (cyclic) {
+        currentStreak = Streak.current(start, habit.intervalDays, checked, today)
+        longest = Streak.longest(start, habit.intervalDays, checked, today)
+        total = Streak.total(start, habit.intervalDays, checked, today)
+        missed = Streak.missed(start, habit.intervalDays, checked, today)
+        dueToday = Recurrence.isTodayOccurrence(start, habit.intervalDays, today)
+        missedDeadlines = emptySet()
+        deadlineDate = null
+    } else {
+        currentStreak = HabitTimeline.currentChainLength(checkedAll, todayEpoch, habit.intervalDays)
+        longest = HabitTimeline.longestChainLength(checkedAll, habit.intervalDays)
+        total = checked.size
+        missed = HabitTimeline.missedCount(checkedAll, todayEpoch, habit.intervalDays)
+        dueToday = HabitTimeline.dueToday(checked.maxOrNull(), todayEpoch, habit.intervalDays)
+        missedDeadlines = HabitTimeline.missedDeadlineDays(checkedAll, todayEpoch, habit.intervalDays)
+        val last = checked.maxOrNull()
+        deadlineDate = if (last != null && !HabitTimeline.isMissed(last, todayEpoch, habit.intervalDays)) {
+            DateUtils.fromEpochDay(HabitTimeline.deadline(last, habit.intervalDays))
+        } else {
+            null
+        }
+    }
+
     val month = YearMonth.now().plusMonths(monthOffset.toLong())
 
     Surface(
@@ -274,14 +328,31 @@ private fun HabitCard(
                     Spacer(Modifier.height(2.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = intervalLabel(habit.intervalDays),
+                            text = intervalLabel(habit.intervalDays) +
+                                if (cyclic) " · 周期" else " · 自由",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        if (!cyclic && deadlineDate != null) {
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "截止${DateUtils.formatMonthDay(deadlineDate)}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (cyclic && !dueToday && todayEpoch !in checked) {
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "未到期",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         if (missed > 0) {
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "已断签 $missed 次",
+                                text = if (cyclic) "已断签 $missed 次" else "已缺卡 $missed 次",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.error,
                             )
@@ -290,6 +361,7 @@ private fun HabitCard(
                 }
                 Spacer(Modifier.width(8.dp))
                 CheckButton(
+                    cyclic = cyclic,
                     dueToday = dueToday,
                     checkedToday = checkedToday,
                     onToggle = { onCheckToggle(checkedToday) },
@@ -299,8 +371,8 @@ private fun HabitCard(
             if (expanded) {
                 HorizontalDivider(Modifier.padding(vertical = 12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatChip("连续 $currentStreak 天")
-                    StatChip("最长 $longest 天")
+                    StatChip("当前连续 $currentStreak 次")
+                    StatChip("最长 $longest 次")
                     StatChip("累计 $total 次")
                 }
                 Spacer(Modifier.height(12.dp))
@@ -322,7 +394,11 @@ private fun HabitCard(
                     today = today,
                     modifier = Modifier.fillMaxWidth(),
                     mark = { date ->
-                        val status = dayStatus(habit, checked, today, date)
+                        val status = if (cyclic) {
+                            cyclicDayStatus(habit, checked, today, date)
+                        } else {
+                            freeDayStatus(checked, missedDeadlines, todayEpoch, date)
+                        }
                         if (status == DayStatus.Due) {
                             Box(
                                 modifier = Modifier
@@ -351,12 +427,16 @@ private fun HabitCard(
                         }
                     },
                     onDayClick = { date ->
-                        val status = dayStatus(habit, checked, today, date)
-                        when (status) {
-                            DayStatus.Checked -> onCheckDate(date, true)
-                            // 今天到期或已错过的周期日可以打卡（补签）；未来周期日不可提前打卡
-                            DayStatus.Due, DayStatus.Missed -> onCheckDate(date, false)
-                            DayStatus.Upcoming, null -> Unit
+                        if (cyclic) {
+                            val status = cyclicDayStatus(habit, checked, today, date)
+                            when (status) {
+                                DayStatus.Checked -> onCheckDate(date, true)
+                                DayStatus.Due, DayStatus.Missed -> onCheckDate(date, false)
+                                DayStatus.Upcoming, null -> Unit
+                            }
+                        } else {
+                            // 自由模式只允许打卡今天（撤销也是今天）
+                            if (date == today) onCheckDate(date, checkedToday)
                         }
                     },
                 )
@@ -390,14 +470,16 @@ private fun StatChip(text: String) {
 
 @Composable
 private fun CheckButton(
+    cyclic: Boolean,
     dueToday: Boolean,
     checkedToday: Boolean,
     onToggle: () -> Unit,
 ) {
     when {
-        !dueToday -> {
+        cyclic && !dueToday -> {
+            // 周期模式非到期日：不显示按钮
             Text(
-                text = "未到期",
+                text = "—",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -420,5 +502,5 @@ private fun CheckButton(
 private fun intervalLabel(intervalDays: Int): String = when (intervalDays) {
     1 -> "每日"
     7 -> "每周"
-    else -> "每 $intervalDays 天一次"
+    else -> "每 $intervalDays 天"
 }

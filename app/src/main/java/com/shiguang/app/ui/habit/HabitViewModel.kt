@@ -42,9 +42,9 @@ class HabitViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    fun addHabit(name: String, emoji: String, intervalDays: Int) {
+    fun addHabit(name: String, emoji: String, intervalDays: Int, mode: Int) {
         viewModelScope.launch {
-            repo.addHabit(name, emoji, intervalDays)
+            repo.addHabit(name, emoji, intervalDays, mode)
         }
     }
 

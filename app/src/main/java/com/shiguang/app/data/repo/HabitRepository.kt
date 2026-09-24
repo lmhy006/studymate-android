@@ -12,14 +12,15 @@ class HabitRepository(private val dao: HabitDao) {
 
     fun observeAllRecords(): Flow<List<HabitRecordEntity>> = dao.observeAllRecords()
 
-    /** 新增习惯，周期锚点默认从今天开始。 */
-    suspend fun addHabit(name: String, emoji: String, intervalDays: Int): Long =
+    /** 新增习惯，周期锚点默认从今天开始；mode = 周期/自由。 */
+    suspend fun addHabit(name: String, emoji: String, intervalDays: Int, mode: Int): Long =
         dao.insert(
             HabitEntity(
                 name = name,
                 emoji = emoji,
                 intervalDays = intervalDays.coerceAtLeast(1),
                 startEpochDay = DateUtils.today().toEpochDay(),
+                mode = mode,
             )
         )
 
