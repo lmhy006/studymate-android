@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.shiguang.app.data.dao.CountdownDao
 import com.shiguang.app.data.dao.HabitDao
 import com.shiguang.app.data.dao.ScheduleDao
@@ -14,7 +16,7 @@ import com.shiguang.app.data.entity.ScheduleEntity
 
 /**
  * 本地数据库（Room，完全离线）。
- * schema 导出到 app/schemas 目录用于后续版本迁移。
+ * schema 导出到 app/schemas 目录用于版本迁移。
  */
 @Database(
     entities = [
@@ -23,7 +25,7 @@ import com.shiguang.app.data.entity.ScheduleEntity
         HabitRecordEntity::class,
         ScheduleEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,6 +37,13 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         private const val DB_NAME = "studymate.db"
 
+        /** v1 -> v2：schedules 增加 note 列（BIT101 导入备注：教师 · 周次）。 */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE schedules ADD COLUMN note TEXT DEFAULT NULL")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -44,7 +53,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     DB_NAME,
-                ).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
             }
     }
 }

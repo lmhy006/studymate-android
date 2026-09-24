@@ -53,26 +53,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.shiguang.app.StudyMateApp
 import com.shiguang.app.core.DateUtils
+import com.shiguang.app.core.SchedulePeriods
 import com.shiguang.app.core.WeekdayMask
+import com.shiguang.app.data.AppSettings
 import com.shiguang.app.data.entity.ScheduleEntity
 import com.shiguang.app.ui.components.EmptyHint
 import com.shiguang.app.ui.components.MonthCalendar
 import com.shiguang.app.ui.theme.scheduleColor
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 
 private const val VIEW_WEEK = 0
 private const val VIEW_MONTH = 1
 
-private const val HOUR_START = 6
-private const val HOUR_END = 23
-private val HOUR_HEIGHT = 52.dp
+/** 周视图每个节次行的高度（仿 BIT101 节次课表）。 */
+private val PERIOD_ROW_HEIGHT = 56.dp
 
 /** 点击周视图空白处预填的“新建日程”数据。 */
 data class PrefillData(val date: LocalDate, val minute: Int)
@@ -87,6 +90,13 @@ fun ScheduleScreen(
     },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // 日程显示设置（设置 → 日程设置）
+    val showSaturday by AppSettings.showSaturday.collectAsStateWithLifecycle()
+    val showSunday by AppSettings.showSunday.collectAsStateWithLifecycle()
+    val highlightToday by AppSettings.highlightToday.collectAsStateWithLifecycle()
+    val showBorder by AppSettings.showBorder.collectAsStateWithLifecycle()
+    val showDivider by AppSettings.showDivider.collectAsStateWithLifecycle()
 
     var viewMode by rememberSaveable { mutableIntStateOf(VIEW_WEEK) }
     var weekAnchorStr by rememberSaveable { mutableStateOf(DateUtils.today().toString()) }
@@ -144,6 +154,10 @@ fun ScheduleScreen(
                     )
                     occurrence.location?.takeIf { it.isNotBlank() }?.let {
                         Text(it, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    source?.note?.takeIf { it.isNotBlank() }?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     HorizontalDivider(Modifier.padding(vertical = 4.dp))
                     Text(
@@ -211,6 +225,11 @@ fun ScheduleScreen(
                 WeekMode(
                     week = week,
                     occurrences = occurrences,
+                    showSaturday = showSaturday,
+                    showSunday = showSunday,
+                    highlightToday = highlightToday,
+                    showBorder = showBorder,
+                    showDivider = showDivider,
                     onPrev = { weekAnchorStr = week.first().minusDays(7).toString() },
                     onNext = { weekAnchorStr = week.first().plusDays(7).toString() },
                     onToday = { weekAnchorStr = DateUtils.today().toString() },
@@ -266,6 +285,11 @@ fun ScheduleScreen(
 private fun WeekMode(
     week: List<LocalDate>,
     occurrences: List<ScheduleOccurrence>,
+    showSaturday: Boolean,
+    showSunday: Boolean,
+    highlightToday: Boolean,
+    showBorder: Boolean,
+    showDivider: Boolean,
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onToday: () -> Unit,
@@ -274,6 +298,17 @@ private fun WeekMode(
     modifier: Modifier = Modifier,
 ) {
     val today = DateUtils.today()
+    val periods = SchedulePeriods.DEFAULT
+    val visibleDays = week.filter { day ->
+        when (day.dayOfWeek) {
+            DayOfWeek.SATURDAY -> showSaturday
+            DayOfWeek.SUNDAY -> showSunday
+            else -> true
+        }
+    }
+    val outlineVariant = MaterialTheme.colorScheme.outlineVariant
+    val primary = MaterialTheme.colorScheme.primary
+
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onPrev) {
@@ -293,10 +328,10 @@ private fun WeekMode(
             TextButton(onClick = onToday) { Text("本周") }
         }
 
-        // 表头：周一..周日
+        // 表头：仅显示可见的星期
         Row(Modifier.fillMaxWidth()) {
-            Spacer(Modifier.width(44.dp))
-            week.forEach { day ->
+            Spacer(Modifier.width(64.dp))
+            visibleDays.forEach { day ->
                 Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -304,91 +339,98 @@ private fun WeekMode(
                     Text(
                         text = DateUtils.weekdayName(day),
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (day == today) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        color = if (day == today) primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = if (day == today) FontWeight.Bold else FontWeight.Normal,
                     )
                     Text(
                         text = day.dayOfMonth.toString(),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color = if (day == today) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        },
+                        color = if (day == today) primary else MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
         }
         Spacer(Modifier.height(6.dp))
 
+        if (visibleDays.isEmpty()) {
+            EmptyHint("周六、周日都被隐藏了\n在 设置 → 日程设置 中调整")
+            return@Column
+        }
+
         Row(
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            // 时间轴
-            Column(Modifier.width(44.dp)) {
-                (HOUR_START until HOUR_END).forEach { hour ->
-                    Text(
-                        text = DateUtils.timeText(hour * 60),
-                        modifier = Modifier.height(HOUR_HEIGHT),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+            // 节次轴：第N节 + 时间
+            Column(Modifier.width(64.dp)) {
+                periods.forEach { period ->
+                    Column(
+                        modifier = Modifier.height(PERIOD_ROW_HEIGHT),
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            text = "第${period.number}节",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = SchedulePeriods.periodRangeText(period),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        )
+                    }
                 }
             }
 
-            // 每天一列
-            week.forEach { day ->
+            // 每天一列：节次网格
+            visibleDays.forEach { day ->
                 val dayEvents = occurrences.filter { it.date == day }
+                val isToday = day == today
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(HOUR_HEIGHT * (HOUR_END - HOUR_START))
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        .height(PERIOD_ROW_HEIGHT * periods.size)
+                        .then(if (showBorder) Modifier.border(1.dp, outlineVariant) else Modifier)
+                        .background(
+                            if (highlightToday && isToday) primary.copy(alpha = 0.06f)
+                            else Color.Transparent
+                        )
                         .pointerInput(day) {
-                            val hourHeightPx = HOUR_HEIGHT.toPx()
+                            val rowHeightPx = PERIOD_ROW_HEIGHT.toPx()
                             detectTapGestures { offset ->
-                                val minutesPerHour = 60f
-                                val tappedMinute =
-                                    HOUR_START * 60 +
-                                        ((offset.y / hourHeightPx) * minutesPerHour)
-                                            .toInt()
-                                            .coerceIn(HOUR_START * 60, (HOUR_END - 1) * 60)
-                                onSlotClick(day, tappedMinute)
+                                val row = (offset.y / rowHeightPx).toInt()
+                                    .coerceIn(0, periods.lastIndex)
+                                onSlotClick(day, periods[row].startMinute)
                             }
                         }
                 ) {
-                    // 小时分隔线
-                    val lineColor = MaterialTheme.colorScheme.outlineVariant
-                    Canvas(Modifier.fillMaxSize()) {
-                        repeat(HOUR_END - HOUR_START - 1) { i ->
-                            val y = (i + 1) * HOUR_HEIGHT.toPx()
-                            drawLine(
-                                color = lineColor,
-                                start = Offset(0f, y),
-                                end = Offset(size.width, y),
-                                strokeWidth = 1f,
-                            )
+                    // 节次分界线
+                    if (showDivider) {
+                        val lineColor = outlineVariant
+                        Canvas(Modifier.fillMaxSize()) {
+                            for (i in 1 until periods.size) {
+                                val y = i * PERIOD_ROW_HEIGHT.toPx()
+                                drawLine(
+                                    color = lineColor,
+                                    start = Offset(0f, y),
+                                    end = Offset(size.width, y),
+                                    strokeWidth = 1f,
+                                )
+                            }
                         }
                     }
-                    // 日程块
+                    // 日程块：按起止时间吸附到节次行
                     dayEvents.forEach { event ->
-                        val startClamped = event.startMinute.coerceIn(HOUR_START * 60, HOUR_END * 60)
-                        val endClamped = event.endMinute.coerceIn(HOUR_START * 60, HOUR_END * 60)
-                        val top = HOUR_HEIGHT * ((startClamped - HOUR_START * 60) / 60f)
-                        val heightDp = HOUR_HEIGHT * ((endClamped - startClamped).coerceAtLeast(15) / 60f)
+                        val range = SchedulePeriods.periodRange(event.startMinute, event.endMinute)
                         Surface(
                             onClick = { onEventClick(event) },
                             modifier = Modifier
-                                .offset(y = top)
+                                .offset(y = PERIOD_ROW_HEIGHT * range.first)
                                 .fillMaxWidth()
-                                .height(if (heightDp < 20.dp) 20.dp else heightDp)
+                                .height(PERIOD_ROW_HEIGHT * (range.last - range.first + 1) - 4.dp)
                                 .padding(horizontal = 1.dp),
                             shape = RoundedCornerShape(6.dp),
                             color = scheduleColor(event.colorIndex),

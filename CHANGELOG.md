@@ -4,6 +4,18 @@
 [GitHub Releases](https://github.com/lmhy006/studymate-android/releases)，并附带 APK 资产。
 发布步骤见 [docs/RELEASE.md](docs/RELEASE.md)。
 
+## [1.0.1] - 2026-09-24
+
+### 新增
+- **日程 → 周视图改为「节次课表」（仿 BIT101）**：每天按 13 节划分（08:00–08:45 第1节 … 20:10–20:55 第13节，时间与 BIT101 默认值一致），带节次轴与横线分界；日程块按起止时间吸附到节次行；
+- **设置 → 日程设置**：显示周六 / 显示周日 / 高亮今日 / 显示节次分界线 / 显示边框（开关即时生效并记住）；
+- **导入 BIT101 课表**：设置 → 日程设置 → 导入课表（JSON）——粘贴与 BIT101 课程对象同构的 JSON（name/teacher/classroom/weekday/start_section/end_section/weeks），设置学期开始日期，预览后批量转为周期日程（含教师·周次备注）；
+- 数据模型：`schedules` 表新增 `note` 列（Room v1→v2 迁移，已有数据无损升级）。
+
+### 验证
+- JVM 单元测试 46 例全部通过（新增节次表 3 例、课表 JSON 导入 5 例）；
+- `assembleDebug` / `assembleDebugAndroidTest` 通过；`lintDebug` 0 错误 0 警告。
+
 ## [1.0.0] - 2026-09-24（首个可用版本）
 
 ### 功能

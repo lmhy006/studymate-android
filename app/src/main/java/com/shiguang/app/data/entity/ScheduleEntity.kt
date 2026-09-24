@@ -19,6 +19,8 @@ data class ScheduleEntity(
     val title: String,
     val location: String? = null,
     val colorIndex: Int = 0,
+    /** 备注/元信息（如 BIT101 导入的教师与周次）。v2 新增列。 */
+    val note: String? = null,
     // 单次
     val singleEpochDay: Long? = null,
     // 周期

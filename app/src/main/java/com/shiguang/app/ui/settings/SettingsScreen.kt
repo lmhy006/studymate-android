@@ -18,6 +18,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,25 +28,56 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.shiguang.app.BuildConfig
+import com.shiguang.app.StudyMateApp
 import com.shiguang.app.data.AppSettings
+import com.shiguang.app.ui.schedule.ScheduleViewModel
 
 /**
  * 设置页：
  * - 外观：亮色 / 暗色 / 跟随系统；
+ * - 日程设置：显示周六/周日、高亮今日、节次分界线、边框，导入 BIT101 课表；
  * - 关于：版本信息、检查应用更新（含拉取安装）、数据与更新说明。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(
+    scheduleViewModel: ScheduleViewModel = viewModel {
+        ScheduleViewModel(
+            (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as StudyMateApp).container
+        )
+    },
+) {
     val themeMode by AppSettings.themeMode.collectAsStateWithLifecycle()
+    val showSaturday by AppSettings.showSaturday.collectAsStateWithLifecycle()
+    val showSunday by AppSettings.showSunday.collectAsStateWithLifecycle()
+    val highlightToday by AppSettings.highlightToday.collectAsStateWithLifecycle()
+    val showBorder by AppSettings.showBorder.collectAsStateWithLifecycle()
+    val showDivider by AppSettings.showDivider.collectAsStateWithLifecycle()
+
     var showUpdateDialog by remember { mutableStateOf(false) }
+    var showImportDialog by remember { mutableStateOf(false) }
+    val toastContext = LocalContext.current
 
     if (showUpdateDialog) {
         CheckUpdateDialog(onDismiss = { showUpdateDialog = false })
+    }
+    if (showImportDialog) {
+        ImportCourseDialog(
+            onDismiss = { showImportDialog = false },
+            onImport = { entities ->
+                entities.forEach { scheduleViewModel.save(it) }
+                Toast.makeText(toastContext, "已导入 ${entities.size} 条课程", Toast.LENGTH_SHORT).show()
+                showImportDialog = false
+            },
+        )
     }
 
     LazyColumn(
@@ -78,6 +110,37 @@ fun SettingsScreen() {
         }
 
         item {
+            SettingsCard(title = "日程设置") {
+                SettingSwitch("显示周六", showSaturday, AppSettings::setShowSaturday)
+                SettingSwitch("显示周日", showSunday, AppSettings::setShowSunday)
+                SettingSwitch("高亮今日", highlightToday, AppSettings::setHighlightToday)
+                SettingSwitch("显示节次分界线", showDivider, AppSettings::setShowDivider)
+                SettingSwitch("显示边框", showBorder, AppSettings::setShowBorder)
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showImportDialog = true }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "导入课表（BIT101 JSON）",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = "把 BIT101 课表按 JSON 粘贴进来，批量转为周期日程",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = { showImportDialog = true }) { Text("导入") }
+                }
+            }
+        }
+
+        item {
             SettingsCard(title = "关于") {
                 AboutRow(
                     key = "版本",
@@ -101,7 +164,7 @@ fun SettingsScreen() {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Text(
                     text = "说明：\n" +
-                        "· 倒数日、打卡、日程数据全部保存在本机（Room），关闭 APP 不丢失；\n" +
+                        "· 倒计时/打卡/日程数据全部保存在本机（Room），关闭 APP 不丢失；\n" +
                         "· 应用仅在“检查更新”时访问网络（GitHub 最新发布版），其余功能完全离线；\n" +
                         "· 桌面小组件：长按桌面 → 添加工具/小部件 → 拾光倒数日。",
                     style = MaterialTheme.typography.bodySmall,
@@ -138,6 +201,21 @@ private fun ThemeChip(label: String, mode: String, current: String, onClick: () 
         onClick = onClick,
         label = { Text(label) },
     )
+}
+
+@Composable
+private fun SettingSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
 }
 
 @Composable
