@@ -72,6 +72,8 @@ dependencies {
 
     // 单元测试（JVM，纯逻辑）
     testImplementation("junit:junit:4.13.2")
+    // 让 JVM 单测也能用 org.json 解析 GitHub Release 负载
+    testImplementation("org.json:json:20240303")
 
     // 数据层集成测试（androidTest，在设备/模拟器上运行 Room 相关用例）
     androidTestImplementation("androidx.test:runner:1.6.2")

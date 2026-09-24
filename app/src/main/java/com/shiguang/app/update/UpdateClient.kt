@@ -65,9 +65,15 @@ object UpdateClient {
 
     private fun parseLatest(conn: HttpURLConnection): ReleaseInfo {
         val text = conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+        return parseLatestJson(text)
+    }
+
+    /** 解析 GitHub releases/latest 的 JSON 正文（纯函数，可单测）。 */
+    internal fun parseLatestJson(text: String): ReleaseInfo {
         val json = JSONObject(text)
         val tag = json.getString("tag_name")
-        val notes = json.optString("body").ifBlank { null }
+        val notes = json.optString("body")
+            .takeIf { it.isNotBlank() && it != "null" }
         var apkUrl: String? = null
         val assets = json.optJSONArray("assets") ?: JSONArray()
         for (i in 0 until assets.length()) {
