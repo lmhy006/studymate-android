@@ -4,6 +4,12 @@
 [GitHub Releases](https://github.com/lmhy006/studymate-android/releases)，并附带 APK 资产。
 发布步骤见 [docs/RELEASE.md](docs/RELEASE.md)。
 
+## [1.0.3] - 2026-09-24
+
+> 说明：v1.0.2 的 Release 误挂了内部版本仍为 1.0.2 的 APK（“关于”显示的版本号取自 APK 内 `versionName`，与 Release tag 无关），
+> 本版本修正：**versionCode 4 / versionName 1.0.3**，功能集与 1.0.2 相同
+> （Gitee 默认更新源 + GitHub 备用、逐课速录、打卡模式选择优化、关于去掉 versionCode 括号）。
+
 ## [1.0.2] - 2026-09-24
 
 ### 新增
