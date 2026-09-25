@@ -30,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.shiguang.app.core.DateUtils
+import com.shiguang.app.core.SchedulePeriod
+import com.shiguang.app.core.SchedulePeriods
 import com.shiguang.app.data.AppSettings
 import com.shiguang.app.data.entity.ScheduleEntity
 import com.shiguang.app.data.import.ImportedCourse
@@ -45,6 +47,7 @@ import com.shiguang.app.data.import.parseCoursesJson
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportCourseDialog(
+    periods: List<SchedulePeriod> = SchedulePeriods.DEFAULT,
     onDismiss: () -> Unit,
     onImport: (List<ScheduleEntity>) -> Unit,
 ) {
@@ -68,6 +71,11 @@ fun ImportCourseDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                Text(
+                    text = "节次时间按当前时间表（设置中可改）换算。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 OutlinedTextField(
                     value = json,
                     onValueChange = { json = it },
@@ -141,7 +149,7 @@ fun ImportCourseDialog(
                 enabled = (preview?.first?.isNotEmpty() == true),
                 onClick = {
                     val courses = preview!!.first
-                    val entities = coursesToSchedules(courses, termStart)
+                    val entities = coursesToSchedules(courses, termStart, periods)
                     onImport(entities)
                 },
             ) {

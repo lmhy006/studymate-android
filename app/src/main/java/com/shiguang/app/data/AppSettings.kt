@@ -2,6 +2,8 @@ package com.shiguang.app.data
 
 import android.content.Context
 import androidx.core.content.edit
+import com.shiguang.app.core.SchedulePeriod
+import com.shiguang.app.core.SchedulePeriods
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +27,7 @@ object AppSettings {
     private const val KEY_SHOW_DIVIDER = "schedule_show_divider"
     private const val KEY_DDL_RELEASE_DAYS = "ddl_release_days"
     private const val KEY_TERM_START = "term_start_epoch_day"
+    private const val KEY_TIME_TABLE = "time_table"
 
     private lateinit var prefs: android.content.SharedPreferences
 
@@ -55,6 +58,10 @@ object AppSettings {
     private val _termStartEpochDay = MutableStateFlow<Long?>(null)
     val termStartEpochDay: StateFlow<Long?> = _termStartEpochDay.asStateFlow()
 
+    // 自定义节次时间表（默认 BIT101 13 节；持久化为文本）
+    private val _timeTable = MutableStateFlow(SchedulePeriods.DEFAULT)
+    val timeTable: StateFlow<List<SchedulePeriod>> = _timeTable.asStateFlow()
+
     /** 在 Application.onCreate 中初始化。 */
     fun init(context: Context) {
         prefs = context.applicationContext
@@ -68,6 +75,8 @@ object AppSettings {
         _ddlReleaseDays.value = prefs.getInt(KEY_DDL_RELEASE_DAYS, 3).coerceIn(1, 30)
         _termStartEpochDay.value = prefs.getLong(KEY_TERM_START, Long.MIN_VALUE)
             .takeIf { it != Long.MIN_VALUE }
+        _timeTable.value = SchedulePeriods.parseTimeTable(prefs.getString(KEY_TIME_TABLE, null))
+            ?: SchedulePeriods.DEFAULT
     }
 
     fun setThemeMode(mode: String) {
@@ -115,4 +124,12 @@ object AppSettings {
             prefs.edit { putLong(KEY_TERM_START, epochDay) }
         }
     }
+
+    /** 保存自定义节次时间表。 */
+    fun setTimeTable(periods: List<SchedulePeriod>) {
+        _timeTable.value = periods
+        prefs.edit { putString(KEY_TIME_TABLE, SchedulePeriods.toTimeTableString(periods)) }
+    }
+
+    fun resetTimeTable() = setTimeTable(SchedulePeriods.DEFAULT)
 }

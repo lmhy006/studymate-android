@@ -1,6 +1,7 @@
 package com.shiguang.app.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -45,5 +46,31 @@ class SchedulePeriodsTest {
         assertEquals(11..12, SchedulePeriods.periodRange(19 * 60 + 20, 20 * 60 + 6))
         // 完整一天 08:00-20:55 → 1..13节
         assertEquals(0..12, SchedulePeriods.periodRange(8 * 60, 20 * 60 + 55))
+    }
+
+    @Test
+    fun `时间表序列化与解析往返`() {
+        val text = SchedulePeriods.toTimeTableString(SchedulePeriods.DEFAULT)
+        assertEquals(SchedulePeriods.DEFAULT, SchedulePeriods.parseTimeTable(text))
+    }
+
+    @Test
+    fun `非法时间表解析返回 null`() {
+        assertNull(SchedulePeriods.parseTimeTable(null))
+        assertNull(SchedulePeriods.parseTimeTable(""))
+        assertNull(SchedulePeriods.parseTimeTable("08:00"))                    // 缺一列
+        assertNull(SchedulePeriods.parseTimeTable("08:00,09:00\n09:30,09:00")) // 结束早于开始
+        assertNull(SchedulePeriods.parseTimeTable("08:00,09:00\n08:30,10:00")) // 相邻重叠
+    }
+
+    @Test
+    fun `自定义时间表参与节次计算`() {
+        val periods = SchedulePeriods.parseTimeTable("07:00,07:30\n08:00,08:45")!!
+        assertEquals(2, periods.size)
+        assertEquals(0, SchedulePeriods.periodIndexForMinute(7 * 60, periods))
+        assertEquals(1, SchedulePeriods.periodIndexForMinute(8 * 60, periods))
+        assertEquals(0..1, SchedulePeriods.periodRange(7 * 60, 8 * 60 + 45, periods))
+        assertEquals(7 * 60, SchedulePeriods.startMinute(1, periods))
+        assertEquals(8 * 60 + 45, SchedulePeriods.endMinute(2, periods))
     }
 }

@@ -65,11 +65,13 @@ fun SettingsScreen(
     val highlightToday by AppSettings.highlightToday.collectAsStateWithLifecycle()
     val showBorder by AppSettings.showBorder.collectAsStateWithLifecycle()
     val showDivider by AppSettings.showDivider.collectAsStateWithLifecycle()
+    val timeTable by AppSettings.timeTable.collectAsStateWithLifecycle()
 
     var showUpdateDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var showRapidDialog by remember { mutableStateOf(false) }
     var showTermPicker by remember { mutableStateOf(false) }
+    var showTimeTableEditor by remember { mutableStateOf(false) }
     val toastContext = LocalContext.current
 
     if (showUpdateDialog) {
@@ -77,6 +79,7 @@ fun SettingsScreen(
     }
     if (showImportDialog) {
         ImportCourseDialog(
+            periods = timeTable,
             onDismiss = { showImportDialog = false },
             onImport = { entities ->
                 entities.forEach { scheduleViewModel.save(it) }
@@ -87,12 +90,24 @@ fun SettingsScreen(
     }
     if (showRapidDialog) {
         RapidEntryDialog(
+            periods = timeTable,
             onDismiss = { showRapidDialog = false },
             onImport = { entities ->
                 entities.forEach { scheduleViewModel.save(it) }
                 Toast.makeText(toastContext, "已导入 ${entities.size} 门课", Toast.LENGTH_SHORT).show()
                 showRapidDialog = false
             },
+        )
+    }
+    if (showTimeTableEditor) {
+        TimeTableEditorDialog(
+            initial = timeTable,
+            onSave = {
+                AppSettings.setTimeTable(it)
+                Toast.makeText(toastContext, "时间表已保存", Toast.LENGTH_SHORT).show()
+                showTimeTableEditor = false
+            },
+            onDismiss = { showTimeTableEditor = false },
         )
     }
 
@@ -175,6 +190,22 @@ fun SettingsScreen(
                     if (termStart != null) {
                         TextButton(onClick = { AppSettings.setTermStart(null) }) { Text("清除") }
                     }
+                }
+
+                // 自定义时间表
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "时间表（每节课上课/下课时间）",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = "默认 08:00 起 ${timeTable.size} 节；影响节次周视图与课表导入",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = { showTimeTableEditor = true }) { Text("编辑") }
                 }
 
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))

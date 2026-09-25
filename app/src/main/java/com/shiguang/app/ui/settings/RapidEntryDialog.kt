@@ -35,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.shiguang.app.core.DateUtils
+import com.shiguang.app.core.SchedulePeriod
+import com.shiguang.app.core.SchedulePeriods
 import com.shiguang.app.data.AppSettings
 import com.shiguang.app.data.entity.ScheduleEntity
 import com.shiguang.app.data.import.ImportedCourse
@@ -47,6 +49,7 @@ import com.shiguang.app.data.import.coursesToSchedules
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RapidEntryDialog(
+    periods: List<SchedulePeriod> = SchedulePeriods.DEFAULT,
     onDismiss: () -> Unit,
     onImport: (List<ScheduleEntity>) -> Unit,
 ) {
@@ -79,7 +82,7 @@ fun RapidEntryDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = "一门课一条，录入后点“添加”，可连续添加多门；\n完成后“生成导入”。节次时间按默认节次表（08:00 起 13 节）换算。",
+                    text = "一门课一条，录入后点“添加”，可连续添加多门；\n完成后“生成导入”。节次时间按当前时间表（设置中可改）换算。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -265,7 +268,7 @@ fun RapidEntryDialog(
             TextButton(
                 enabled = rows.isNotEmpty(),
                 onClick = {
-                    val entities = coursesToSchedules(rows, termStart)
+                    val entities = coursesToSchedules(rows, termStart, periods)
                     onImport(entities)
                 },
             ) {

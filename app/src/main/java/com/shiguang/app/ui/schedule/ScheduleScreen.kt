@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.shiguang.app.StudyMateApp
 import com.shiguang.app.core.DateUtils
+import com.shiguang.app.core.SchedulePeriod
 import com.shiguang.app.core.SchedulePeriods
 import com.shiguang.app.core.WeekdayMask
 import com.shiguang.app.data.AppSettings
@@ -108,6 +109,7 @@ fun ScheduleScreen(
     val highlightToday by AppSettings.highlightToday.collectAsStateWithLifecycle()
     val showBorder by AppSettings.showBorder.collectAsStateWithLifecycle()
     val showDivider by AppSettings.showDivider.collectAsStateWithLifecycle()
+    val timeTable by AppSettings.timeTable.collectAsStateWithLifecycle()
 
     var viewMode by rememberSaveable { mutableIntStateOf(VIEW_WEEK) }
     var weekAnchorStr by rememberSaveable { mutableStateOf(DateUtils.today().toString()) }
@@ -320,6 +322,7 @@ fun ScheduleScreen(
                     WeekMode(
                         week = week,
                         occurrences = occurrences,
+                        periods = timeTable,
                         showSaturday = showSaturday,
                         showSunday = showSunday,
                         highlightToday = highlightToday,
@@ -399,6 +402,7 @@ fun ScheduleScreen(
 private fun WeekMode(
     week: List<LocalDate>,
     occurrences: List<ScheduleOccurrence>,
+    periods: List<SchedulePeriod>,
     showSaturday: Boolean,
     showSunday: Boolean,
     highlightToday: Boolean,
@@ -412,7 +416,6 @@ private fun WeekMode(
     modifier: Modifier = Modifier,
 ) {
     val today = DateUtils.today()
-    val periods = SchedulePeriods.DEFAULT
     val visibleDays = week.filter { day ->
         when (day.dayOfWeek) {
             DayOfWeek.SATURDAY -> showSaturday
@@ -538,7 +541,7 @@ private fun WeekMode(
                     }
                     // 日程块：按起止时间吸附到节次行
                     dayEvents.forEach { event ->
-                        val range = SchedulePeriods.periodRange(event.startMinute, event.endMinute)
+                        val range = SchedulePeriods.periodRange(event.startMinute, event.endMinute, periods)
                         Surface(
                             onClick = { onEventClick(event) },
                             modifier = Modifier
