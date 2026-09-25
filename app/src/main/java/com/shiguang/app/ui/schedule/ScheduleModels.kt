@@ -2,6 +2,7 @@ package com.shiguang.app.ui.schedule
 
 import com.shiguang.app.core.DateUtils
 import com.shiguang.app.core.Recurrence
+import com.shiguang.app.core.WeekParity
 import com.shiguang.app.data.entity.ScheduleEntity
 import java.time.LocalDate
 
@@ -45,13 +46,17 @@ fun materializeOccurrences(
                 emptyList()
             }
         } else if (schedule.repeatStartEpochDay != null && schedule.repeatEndEpochDay != null) {
+            val ruleStartDate = DateUtils.fromEpochDay(schedule.repeatStartEpochDay)
             Recurrence.occurrencesBetween(
-                ruleStart = DateUtils.fromEpochDay(schedule.repeatStartEpochDay),
+                ruleStart = ruleStartDate,
                 ruleEnd = DateUtils.fromEpochDay(schedule.repeatEndEpochDay),
                 weekdaysMask = schedule.weekdaysMask,
                 rangeStart = rangeStart,
                 rangeEnd = rangeEnd,
-            ).map { day ->
+            ).filter { day ->
+                // 单双周过滤：以规则起点所在周的周一为第 1 周
+                WeekParity.matches(schedule.weekParity, WeekParity.weekNumber(day, ruleStartDate))
+            }.map { day ->
                 ScheduleOccurrence(
                     scheduleId = schedule.id,
                     date = day,

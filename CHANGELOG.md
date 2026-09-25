@@ -4,6 +4,16 @@
 [GitHub Releases](https://github.com/lmhy006/studymate-android/releases)，并附带 APK 资产。
 发布步骤见 [docs/RELEASE.md](docs/RELEASE.md)。
 
+## [1.2.0] - 2026-09-24
+
+### 新增：单双周（教学周奇偶）
+- **导入课程支持单双周**：BIT101 JSON 新增可选字段 `week_parity`（`odd`/`even`/`single`/`double`/`单周`/`双周`），逐课速录新增「每周 / 单周 / 双周」选择；
+- **周期日程模型支持单双周**（`schedules.weekParity`，Room v4→v5 迁移）：周/月视图按教学周奇偶自动展开——第 k 周以“规则起点所在周的周一”为第 1 周计算（与教学周起点对齐一致）；
+- **手动周期日程可设单双周**（日程编辑弹层）；日程详情显示“单周/双周”标识；导入备注自动带“单周/双周”。
+
+### 验证
+- JVM 单元测试 73 例全部通过（新增 单双周 5 例：奇偶匹配/教学周序号/物化过滤、导入解析与转换 2 例）；`assembleDebug` / `assembleDebugAndroidTest` 通过；`lintDebug` 0 错误 0 警告。
+
 ## [1.1.2] - 2026-09-24
 
 ### 新增

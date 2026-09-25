@@ -2,6 +2,7 @@ package com.shiguang.app.data.import
 
 import com.shiguang.app.core.DateUtils
 import com.shiguang.app.core.SchedulePeriods
+import com.shiguang.app.core.WeekParity
 import com.shiguang.app.data.entity.ScheduleEntity
 import org.json.JSONArray
 import org.json.JSONException
@@ -19,6 +20,8 @@ data class ImportedCourse(
     val weekday: Int,
     val startSection: Int,
     val endSection: Int,
+    /** 单双周：0=每周（默认）、1=单周、2=双周 */
+    val weekParity: Int = WeekParity.ALL,
     /** 教学周范围：形如 weeks=[1..16] 取首尾；缺省时按整学期处理 */
     val weeksMin: Int?,
     val weeksMax: Int?,
@@ -58,6 +61,11 @@ fun parseCoursesJson(text: String): Pair<List<ImportedCourse>, List<String>> {
             val weekday = obj.optInt("weekday", 0)
             val startSection = obj.optInt("start_section", 0)
             val endSection = obj.optInt("end_section", 0)
+            val weekParity = when (obj.optString("week_parity", "").trim().lowercase()) {
+                "odd", "single", "单周" -> WeekParity.ODD
+                "even", "double", "双周" -> WeekParity.EVEN
+                else -> WeekParity.ALL
+            }
             val weeksMin: Int?
             val weeksMax: Int?
             val weeks = obj.optJSONArray("weeks")
@@ -84,6 +92,7 @@ fun parseCoursesJson(text: String): Pair<List<ImportedCourse>, List<String>> {
                 weekday = weekday,
                 startSection = startSection,
                 endSection = endSection,
+                weekParity = weekParity,
                 weeksMin = weeksMin,
                 weeksMax = weeksMax,
             )
@@ -138,6 +147,10 @@ fun coursesToSchedules(
             if (isNotEmpty()) append(" · ")
             append("第${course.weeksMin ?: 1}-${course.weeksMax ?: 16}周")
         }
+        if (course.weekParity != WeekParity.ALL) {
+            if (isNotEmpty()) append(" · ")
+            append(WeekParity.label(course.weekParity))
+        }
     }.ifBlank { null }
 
     ScheduleEntity(
@@ -148,6 +161,7 @@ fun coursesToSchedules(
         repeatStartEpochDay = rangeStart.toEpochDay(),
         repeatEndEpochDay = rangeEnd.toEpochDay(),
         weekdaysMask = 1 shl (course.weekday - 1),
+        weekParity = course.weekParity,
         startMinute = startMinute,
         endMinute = endMinute,
         note = note,

@@ -1,6 +1,7 @@
 package com.shiguang.app.data.import
 
 import com.shiguang.app.core.DateUtils
+import com.shiguang.app.core.WeekParity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -95,6 +96,27 @@ class CourseImportTest {
         val list = coursesToSchedules(courses, LocalDate.of(2025, 9, 1))
         assertEquals(1, list.size)
         assertEquals("正常课", list.first().title)
+    }
+
+    @Test
+    fun `week_parity 单双周解析并写入日程`() {
+        val json = """{"courses":[
+            {"name":"单周课","weekday":1,"start_section":1,"end_section":1,"week_parity":"odd"},
+            {"name":"双周课","weekday":2,"start_section":1,"end_section":1,"week_parity":"双周"}
+        ]}"""
+        val (courses, errors) = parseCoursesJson(json)
+        assertTrue(errors.isEmpty())
+        assertEquals(2, courses.size)
+        assertEquals(WeekParity.ODD, courses[0].weekParity)
+        assertEquals(WeekParity.EVEN, courses[1].weekParity)
+        val list = coursesToSchedules(courses, LocalDate.of(2025, 9, 1))
+        assertEquals(WeekParity.ODD, list[0].weekParity)
+        assertEquals(WeekParity.EVEN, list[1].weekParity)
+        assertTrue(list[0].note!!.contains("单周"))
+        assertTrue(list[1].note!!.contains("双周"))
+        // 缺省为每周
+        val plain = parseCoursesJson("""{"courses":[{"name":"常课","weekday":3,"start_section":1,"end_section":1}]}""").first
+        assertEquals(WeekParity.ALL, plain[0].weekParity)
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.shiguang.app.ui.schedule
 
+import com.shiguang.app.core.WeekParity
 import com.shiguang.app.data.entity.ScheduleEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -46,7 +47,7 @@ class ScheduleModelsTest {
     }
 
     @Test
-    fun `批量周期日程按星期掩码自动展开`() {
+    fun `周期日程按星期掩码自动展开`() {
         // 2025-06 的周一：2, 9, 16, 23, 30；查询窗口 06-05~06-25 命中 9/16/23
         val schedule = ScheduleEntity(
             id = 1,
@@ -65,6 +66,27 @@ class ScheduleModelsTest {
         assertEquals(2, first.colorIndex)
         assertEquals("英语早读", first.title)
         assertEquals(8 * 60, first.startMinute)
+    }
+
+    @Test
+    fun `周期日程支持单双周过滤`() {
+        // 2025-09：周一 = 01/08/15/22；第1周=09-01 所在周一，单周取 01、15，双周取 08、22
+        fun schedule(parity: Int) = ScheduleEntity(
+            id = 1,
+            title = "慢跑",
+            repeatStartEpochDay = d("2025-09-01").toEpochDay(),
+            repeatEndEpochDay = d("2025-09-30").toEpochDay(),
+            weekdaysMask = 1, // 周一
+            weekParity = parity,
+            startMinute = 7 * 60,
+            endMinute = 8 * 60,
+        )
+        val odd = materializeOccurrences(listOf(schedule(WeekParity.ODD)), d("2025-09-01"), d("2025-09-28"))
+            .map { it.date }
+        assertEquals(listOf(d("2025-09-01"), d("2025-09-15")), odd)
+        val even = materializeOccurrences(listOf(schedule(WeekParity.EVEN)), d("2025-09-01"), d("2025-09-28"))
+            .map { it.date }
+        assertEquals(listOf(d("2025-09-08"), d("2025-09-22")), even)
     }
 
     @Test

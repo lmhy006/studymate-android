@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.shiguang.app.core.DateUtils
+import com.shiguang.app.core.WeekParity
 import com.shiguang.app.core.WeekdayMask
 import com.shiguang.app.data.entity.ScheduleEntity
 import com.shiguang.app.ui.theme.SchedulePalette
@@ -105,6 +106,7 @@ fun ScheduleEditSheet(
         )
     }
     var mask by remember { mutableIntStateOf(editing?.weekdaysMask ?: 0) }
+    var weekParity by remember { mutableIntStateOf(editing?.weekParity ?: WeekParity.ALL) }
 
     var startMin by remember {
         mutableIntStateOf(editing?.startMinute ?: (prefill?.minute ?: 8 * 60))
@@ -227,9 +229,33 @@ fun ScheduleEditSheet(
                         )
                     }
                 }
+                // 单双周
+                Text(
+                    text = "单双周",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip(
+                        selected = weekParity == WeekParity.ALL,
+                        onClick = { weekParity = WeekParity.ALL },
+                        label = { Text("每周") },
+                    )
+                    FilterChip(
+                        selected = weekParity == WeekParity.ODD,
+                        onClick = { weekParity = WeekParity.ODD },
+                        label = { Text("单周") },
+                    )
+                    FilterChip(
+                        selected = weekParity == WeekParity.EVEN,
+                        onClick = { weekParity = WeekParity.EVEN },
+                        label = { Text("双周") },
+                    )
+                }
                 Text(
                     text = "示例：从 ${DateUtils.formatMonthDay(rangeStart)} 到 ${DateUtils.formatMonthDay(rangeEnd)} 之间的所有" +
-                        "${WeekdayMask.names(mask)} ${DateUtils.timeText(startMin)}~${DateUtils.timeText(endMin)} 都会自动生成日程。",
+                        "${WeekdayMask.names(mask)} ${DateUtils.timeText(startMin)}~${DateUtils.timeText(endMin)} 都会自动生成日程。" +
+                        (if (weekParity != WeekParity.ALL) "（${WeekParity.label(weekParity)}）" else ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -304,6 +330,7 @@ fun ScheduleEditSheet(
                                 repeatStartEpochDay = rangeStart.toEpochDay(),
                                 repeatEndEpochDay = rangeEnd.toEpochDay(),
                                 weekdaysMask = mask,
+                                weekParity = weekParity,
                                 startMinute = startMin,
                                 endMinute = endMin,
                             )
@@ -320,6 +347,7 @@ fun ScheduleEditSheet(
                                 repeatStartEpochDay = null,
                                 repeatEndEpochDay = null,
                                 weekdaysMask = 0,
+                                weekParity = WeekParity.ALL,
                                 startMinute = startMin,
                                 endMinute = endMin,
                             )

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.shiguang.app.core.DateUtils
 import com.shiguang.app.core.SchedulePeriod
 import com.shiguang.app.core.SchedulePeriods
+import com.shiguang.app.core.WeekParity
 import com.shiguang.app.data.AppSettings
 import com.shiguang.app.data.entity.ScheduleEntity
 import com.shiguang.app.data.import.ImportedCourse
@@ -55,6 +56,7 @@ fun RapidEntryDialog(
 ) {
     var name by remember { mutableStateOf("") }
     var weekday by remember { mutableIntStateOf(1) }
+    var parity by remember { mutableIntStateOf(WeekParity.ALL) }
     val maxSection = periods.size.coerceAtLeast(1)
     var startSection by remember { mutableFloatStateOf(1f) }
     var endSection by remember { mutableFloatStateOf(if (periods.size >= 2) 2f else 1f) }
@@ -112,6 +114,29 @@ fun RapidEntryDialog(
                             label = { Text(DateUtils.WEEKDAY_NAMES[w - 1].removePrefix("周")) },
                         )
                     }
+                }
+
+                Text(
+                    text = "单双周",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip(
+                        selected = parity == WeekParity.ALL,
+                        onClick = { parity = WeekParity.ALL },
+                        label = { Text("每周") },
+                    )
+                    FilterChip(
+                        selected = parity == WeekParity.ODD,
+                        onClick = { parity = WeekParity.ODD },
+                        label = { Text("单周") },
+                    )
+                    FilterChip(
+                        selected = parity == WeekParity.EVEN,
+                        onClick = { parity = WeekParity.EVEN },
+                        label = { Text("双周") },
+                    )
                 }
 
                 Text(
@@ -200,6 +225,7 @@ fun RapidEntryDialog(
                             weekday = weekday,
                             startSection = s,
                             endSection = e,
+                            weekParity = parity,
                             weeksMin = wMin,
                             weeksMax = wMax,
                         )
@@ -221,7 +247,9 @@ fun RapidEntryDialog(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = "${index + 1}. ${course.name}（周${DateUtils.WEEKDAY_NAMES[course.weekday - 1]} " +
-                                    "第${course.startSection}-${course.endSection}节 第${course.weeksMin}-${course.weeksMax}周）",
+                                    "第${course.startSection}-${course.endSection}节 第${course.weeksMin}-${course.weeksMax}周" +
+                                    (if (course.weekParity != WeekParity.ALL) " ${WeekParity.label(course.weekParity)}" else "") +
+                                    "）",
                                 modifier = Modifier.weight(1f),
                                 style = MaterialTheme.typography.bodySmall,
                             )

@@ -61,6 +61,7 @@ import com.shiguang.app.StudyMateApp
 import com.shiguang.app.core.DateUtils
 import com.shiguang.app.core.SchedulePeriod
 import com.shiguang.app.core.SchedulePeriods
+import com.shiguang.app.core.WeekParity
 import com.shiguang.app.core.WeekdayMask
 import com.shiguang.app.data.AppSettings
 import com.shiguang.app.data.entity.DdlEntity
@@ -204,7 +205,8 @@ fun ScheduleScreen(
                         text = if (source?.isRecurring == true) {
                             "周期日程：${DateUtils.formatMonthDay(DateUtils.fromEpochDay(source.repeatStartEpochDay!!))} - " +
                                 "${DateUtils.formatMonthDay(DateUtils.fromEpochDay(source.repeatEndEpochDay!!))}，每" +
-                                WeekdayMask.names(source.weekdaysMask)
+                                WeekdayMask.names(source.weekdaysMask) +
+                                (if (source.weekParity != WeekParity.ALL) "，${WeekParity.label(source.weekParity)}" else "")
                         } else {
                             "单次日程"
                         },
