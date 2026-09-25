@@ -7,9 +7,11 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.shiguang.app.data.dao.CountdownDao
+import com.shiguang.app.data.dao.DdlDao
 import com.shiguang.app.data.dao.HabitDao
 import com.shiguang.app.data.dao.ScheduleDao
 import com.shiguang.app.data.entity.CountdownEntity
+import com.shiguang.app.data.entity.DdlEntity
 import com.shiguang.app.data.entity.HabitEntity
 import com.shiguang.app.data.entity.HabitRecordEntity
 import com.shiguang.app.data.entity.ScheduleEntity
@@ -24,8 +26,9 @@ import com.shiguang.app.data.entity.ScheduleEntity
         HabitEntity::class,
         HabitRecordEntity::class,
         ScheduleEntity::class,
+        DdlEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,6 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun countdownDao(): CountdownDao
     abstract fun habitDao(): HabitDao
     abstract fun scheduleDao(): ScheduleDao
+    abstract fun ddlDao(): DdlDao
 
     companion object {
         private const val DB_NAME = "studymate.db"
@@ -51,6 +55,23 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v3 -> v4：新建 ddls 表（课程作业截止）。 */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `ddls` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`title` TEXT NOT NULL, " +
+                        "`courseName` TEXT, " +
+                        "`dueAt` INTEGER NOT NULL, " +
+                        "`submitMethod` TEXT, " +
+                        "`note` TEXT, " +
+                        "`completed` INTEGER NOT NULL DEFAULT 0, " +
+                        "`completedAt` INTEGER)"
+                )
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -61,7 +82,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DB_NAME,
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build().also { instance = it }
             }
     }

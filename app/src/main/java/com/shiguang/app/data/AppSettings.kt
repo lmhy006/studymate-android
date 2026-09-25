@@ -23,6 +23,7 @@ object AppSettings {
     private const val KEY_HIGHLIGHT_TODAY = "schedule_highlight_today"
     private const val KEY_SHOW_BORDER = "schedule_show_border"
     private const val KEY_SHOW_DIVIDER = "schedule_show_divider"
+    private const val KEY_DDL_RELEASE_DAYS = "ddl_release_days"
 
     private lateinit var prefs: android.content.SharedPreferences
 
@@ -45,6 +46,10 @@ object AppSettings {
     private val _showDivider = MutableStateFlow(true)
     val showDivider: StateFlow<Boolean> = _showDivider.asStateFlow()
 
+    // DDL：完成后自动释放的天数（默认 3）
+    private val _ddlReleaseDays = MutableStateFlow(3)
+    val ddlReleaseDays: StateFlow<Int> = _ddlReleaseDays.asStateFlow()
+
     /** 在 Application.onCreate 中初始化。 */
     fun init(context: Context) {
         prefs = context.applicationContext
@@ -55,6 +60,7 @@ object AppSettings {
         _highlightToday.value = prefs.getBoolean(KEY_HIGHLIGHT_TODAY, true)
         _showBorder.value = prefs.getBoolean(KEY_SHOW_BORDER, true)
         _showDivider.value = prefs.getBoolean(KEY_SHOW_DIVIDER, true)
+        _ddlReleaseDays.value = prefs.getInt(KEY_DDL_RELEASE_DAYS, 3).coerceIn(1, 30)
     }
 
     fun setThemeMode(mode: String) {
@@ -85,5 +91,11 @@ object AppSettings {
     fun setShowDivider(value: Boolean) {
         _showDivider.value = value
         prefs.edit { putBoolean(KEY_SHOW_DIVIDER, value) }
+    }
+
+    fun setDdlReleaseDays(days: Int) {
+        val v = days.coerceIn(1, 30)
+        _ddlReleaseDays.value = v
+        prefs.edit { putInt(KEY_DDL_RELEASE_DAYS, v) }
     }
 }

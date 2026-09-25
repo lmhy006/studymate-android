@@ -4,6 +4,18 @@
 [GitHub Releases](https://github.com/lmhy006/studymate-android/releases)，并附带 APK 资产。
 发布步骤见 [docs/RELEASE.md](docs/RELEASE.md)。
 
+## [1.1.0] - 2026-09-24
+
+### 新增：DDL（课程作业截止）
+- 位于 **日程 Tab 内**（周视图 / 月视图 / DDL 三个视图切换）；
+- 添加 DDL：作业内容、**关联课程**（从日程中已有课程选择，可跳过）、**提交截止时间**（日期+时刻）、提交方式（可选）、备注（可选）；
+- **勾选“已完成”**，完成 N 天后自动释放（N 可配置，设置 → 日程设置，默认 3 天）；
+- **与日程联动**：点击周/月视图里的课程 → 详情除课程信息外显示该课**关联 DDL**（未完成红字标过期），并可一键「为该课程添加 DDL」；DDL 视图顶部横幅提醒（今日截止 / 已过期）；
+- 截止提醒为 App 内提示（沿用无系统通知的设定）；Room v3→v4 迁移（已有数据无损升级）。
+
+### 验证
+- JVM 单元测试 63 例全部通过（新增 DDL 截止/释放计算 3 例）；`assembleDebug` / `assembleDebugAndroidTest` 通过；`lintDebug` 0 错误 0 警告。
+
 ## [1.0.3] - 2026-09-24
 
 > 说明：v1.0.2 的 Release 误挂了内部版本仍为 1.0.2 的 APK（“关于”显示的版本号取自 APK 内 `versionName`，与 Release tag 无关），

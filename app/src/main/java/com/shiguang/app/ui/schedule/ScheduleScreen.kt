@@ -62,9 +62,13 @@ import com.shiguang.app.core.DateUtils
 import com.shiguang.app.core.SchedulePeriods
 import com.shiguang.app.core.WeekdayMask
 import com.shiguang.app.data.AppSettings
+import com.shiguang.app.data.entity.DdlEntity
 import com.shiguang.app.data.entity.ScheduleEntity
 import com.shiguang.app.ui.components.EmptyHint
 import com.shiguang.app.ui.components.MonthCalendar
+import com.shiguang.app.ui.ddl.DdlEditSheet
+import com.shiguang.app.ui.ddl.DdlView
+import com.shiguang.app.ui.ddl.DdlViewModel
 import com.shiguang.app.ui.theme.scheduleColor
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
@@ -73,6 +77,7 @@ import java.time.YearMonth
 
 private const val VIEW_WEEK = 0
 private const val VIEW_MONTH = 1
+private const val VIEW_DDL = 2
 
 /** 周视图每个节次行的高度（仿 BIT101 节次课表）。 */
 private val PERIOD_ROW_HEIGHT = 56.dp
@@ -88,8 +93,14 @@ fun ScheduleScreen(
             (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as StudyMateApp).container
         )
     },
+    ddlViewModel: DdlViewModel = viewModel {
+        DdlViewModel(
+            (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as StudyMateApp).container
+        )
+    },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val ddlState by ddlViewModel.uiState.collectAsStateWithLifecycle()
 
     // 日程显示设置（设置 → 日程设置）
     val showSaturday by AppSettings.showSaturday.collectAsStateWithLifecycle()
@@ -106,6 +117,8 @@ fun ScheduleScreen(
     var editing by remember { mutableStateOf<ScheduleEntity?>(null) }
     var prefill by remember { mutableStateOf<PrefillData?>(null) }
     var detail by remember { mutableStateOf<ScheduleOccurrence?>(null) }
+    var ddlEditing by remember { mutableStateOf<DdlEntity?>(null) }
+    var ddlAddPrefill by remember { mutableStateOf<String?>(null) } // 预选关联课程名
 
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -132,6 +145,31 @@ fun ScheduleScreen(
                 viewModel.delete(entity)
                 editing = null
                 prefill = null
+                notify("已删除")
+            },
+        )
+    }
+
+    // ---- DDL 弹层 ----
+    if (ddlEditing != null || ddlAddPrefill != null) {
+        DdlEditSheet(
+            editing = ddlEditing,
+            prefillCourseName = ddlAddPrefill,
+            courseNames = ddlState.courseNames,
+            onDismiss = {
+                ddlEditing = null
+                ddlAddPrefill = null
+            },
+            onSave = { ddl ->
+                ddlViewModel.save(ddl)
+                ddlEditing = null
+                ddlAddPrefill = null
+                notify("已保存")
+            },
+            onDelete = { ddl ->
+                ddlViewModel.delete(ddl)
+                ddlEditing = null
+                ddlAddPrefill = null
                 notify("已删除")
             },
         )
@@ -171,6 +209,57 @@ fun ScheduleScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+
+                    // 关联 DDL
+                    if (source != null && source.title.isNotBlank()) {
+                        HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                        val related = ddlState.all.filter { it.courseName == source.title }
+                        Text(
+                            text = "关联 DDL（${related.size}）",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        if (related.isEmpty()) {
+                            Text(
+                                text = "该课程暂无 DDL",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        } else {
+                            related.take(6).forEach { ddl ->
+                                Text(
+                                    text = buildString {
+                                        if (ddl.completed) append("✓ ")
+                                        append(ddl.title)
+                                        append("（截止 ${DateUtils.formatDateTime(ddl.dueAt)}")
+                                        if (ddl.completed) append(" 已完成") else append(" 未完成")
+                                        append("）")
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (!ddl.completed && com.shiguang.app.core.DdlLogic.isOverdue(ddl.dueAt, System.currentTimeMillis())) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                )
+                            }
+                            if (related.size > 6) {
+                                Text(
+                                    text = "…… 共 ${related.size} 个，请在「DDL」视图查看",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        TextButton(
+                            onClick = {
+                                detail = null
+                                ddlAddPrefill = source.title
+                            }
+                        ) {
+                            Text("为该课程添加 DDL")
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -214,55 +303,80 @@ fun ScheduleScreen(
                             onClick = { viewMode = VIEW_MONTH },
                             label = { Text("月视图") },
                         )
+                        FilterChip(
+                            selected = viewMode == VIEW_DDL,
+                            onClick = { viewMode = VIEW_DDL },
+                            label = { Text("DDL") },
+                        )
                     }
                 }
             }
 
-            if (viewMode == VIEW_WEEK) {
-                val week = DateUtils.weekOf(LocalDate.parse(weekAnchorStr))
-                val occurrences = materializeOccurrences(state.all, week.first(), week.last())
+            when (viewMode) {
+                VIEW_WEEK -> {
+                    val week = DateUtils.weekOf(LocalDate.parse(weekAnchorStr))
+                    val occurrences = materializeOccurrences(state.all, week.first(), week.last())
 
-                WeekMode(
-                    week = week,
-                    occurrences = occurrences,
-                    showSaturday = showSaturday,
-                    showSunday = showSunday,
-                    highlightToday = highlightToday,
-                    showBorder = showBorder,
-                    showDivider = showDivider,
-                    onPrev = { weekAnchorStr = week.first().minusDays(7).toString() },
-                    onNext = { weekAnchorStr = week.first().plusDays(7).toString() },
-                    onToday = { weekAnchorStr = DateUtils.today().toString() },
-                    onEventClick = { detail = it },
-                    onSlotClick = { date, minute -> prefill = PrefillData(date, minute) },
-                    modifier = Modifier.weight(1f),
-                )
-            } else {
-                val month = YearMonth.parse(monthStr)
-                val monthStart = month.atDay(1)
-                val monthEnd = month.atEndOfMonth()
-                val occurrences = materializeOccurrences(state.all, monthStart, monthEnd)
-                val selected = selectedDay ?: DateUtils.today()
-                val dayEvents = materializeOccurrences(state.all, selected, selected)
+                    WeekMode(
+                        week = week,
+                        occurrences = occurrences,
+                        showSaturday = showSaturday,
+                        showSunday = showSunday,
+                        highlightToday = highlightToday,
+                        showBorder = showBorder,
+                        showDivider = showDivider,
+                        onPrev = { weekAnchorStr = week.first().minusDays(7).toString() },
+                        onNext = { weekAnchorStr = week.first().plusDays(7).toString() },
+                        onToday = { weekAnchorStr = DateUtils.today().toString() },
+                        onEventClick = { detail = it },
+                        onSlotClick = { date, minute -> prefill = PrefillData(date, minute) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                VIEW_DDL -> {
+                    DdlView(
+                        state = ddlState,
+                        onCardClick = { ddlEditing = it },
+                        onToggleCompleted = { ddl, completed ->
+                            ddlViewModel.toggleCompleted(ddl, completed)
+                        },
+                        onAddDdl = { ddlAddPrefill = null },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                else -> {
+                    val month = YearMonth.parse(monthStr)
+                    val monthStart = month.atDay(1)
+                    val monthEnd = month.atEndOfMonth()
+                    val occurrences = materializeOccurrences(state.all, monthStart, monthEnd)
+                    val selected = selectedDay ?: DateUtils.today()
+                    val dayEvents = materializeOccurrences(state.all, selected, selected)
 
-                MonthMode(
-                    month = month,
-                    occurrences = occurrences,
-                    selectedDay = selected,
-                    dayEvents = dayEvents,
-                    onPrev = { monthStr = month.minusMonths(1).toString() },
-                    onNext = { monthStr = month.plusMonths(1).toString() },
-                    onToday = { monthStr = YearMonth.now().toString(); selectedDay = null },
-                    onSelectDay = { selectedDay = it },
-                    onEventClick = { detail = it },
-                    onAddForDay = { date -> prefill = PrefillData(date, 8 * 60) },
-                    modifier = Modifier.weight(1f),
-                )
+                    MonthMode(
+                        month = month,
+                        occurrences = occurrences,
+                        selectedDay = selected,
+                        dayEvents = dayEvents,
+                        onPrev = { monthStr = month.minusMonths(1).toString() },
+                        onNext = { monthStr = month.plusMonths(1).toString() },
+                        onToday = { monthStr = YearMonth.now().toString(); selectedDay = null },
+                        onSelectDay = { selectedDay = it },
+                        onEventClick = { detail = it },
+                        onAddForDay = { date -> prefill = PrefillData(date, 8 * 60) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
 
         FloatingActionButton(
-            onClick = { prefill = PrefillData(DateUtils.today(), 8 * 60) },
+            onClick = {
+                if (viewMode == VIEW_DDL) {
+                    ddlAddPrefill = null
+                } else {
+                    prefill = PrefillData(DateUtils.today(), 8 * 60)
+                }
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(20.dp),

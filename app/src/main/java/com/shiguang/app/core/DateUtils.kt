@@ -3,7 +3,9 @@ package com.shiguang.app.core
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -69,4 +71,18 @@ object DateUtils {
         val m = minuteOfDay % 60
         return String.format(Locale.US, "%02d:%02d", h, m)
     }
+
+    // ---- LocalDateTime / epochMillis（本机时区），供 DDL 使用 ----
+
+    fun toEpochMillis(dt: LocalDateTime): Long =
+        dt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    fun fromEpochMillis(ms: Long): LocalDateTime =
+        Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).toLocalDateTime()
+
+    private val DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日 HH:mm")
+
+    fun formatDateTime(dt: LocalDateTime): String = dt.format(DATE_TIME)
+
+    fun formatDateTime(millis: Long): String = formatDateTime(fromEpochMillis(millis))
 }

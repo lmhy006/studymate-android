@@ -128,6 +128,29 @@ fun SettingsScreen(
                 SettingSwitch("显示节次分界线", showDivider, AppSettings::setShowDivider)
                 SettingSwitch("显示边框", showBorder, AppSettings::setShowBorder)
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                // DDL 完成后自动释放天数
+                val ddlReleaseDays by AppSettings.ddlReleaseDays.collectAsStateWithLifecycle()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "DDL 完成后自动释放天数",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    TextButton(
+                        onClick = { AppSettings.setDdlReleaseDays(ddlReleaseDays - 1) },
+                        enabled = ddlReleaseDays > 1,
+                    ) {
+                        Text("−")
+                    }
+                    Text(text = "$ddlReleaseDays 天", style = MaterialTheme.typography.bodyLarge)
+                    TextButton(
+                        onClick = { AppSettings.setDdlReleaseDays(ddlReleaseDays + 1) },
+                        enabled = ddlReleaseDays < 30,
+                    ) {
+                        Text("+")
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
