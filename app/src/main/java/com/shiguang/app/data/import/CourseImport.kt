@@ -1,5 +1,6 @@
 package com.shiguang.app.data.import
 
+import com.shiguang.app.core.DateUtils
 import com.shiguang.app.core.SchedulePeriods
 import com.shiguang.app.data.entity.ScheduleEntity
 import org.json.JSONArray
@@ -107,11 +108,12 @@ fun coursesToSchedules(
     termStart: LocalDate,
     periods: List<com.shiguang.app.core.SchedulePeriod> = SchedulePeriods.DEFAULT,
 ): List<ScheduleEntity> = courses.mapIndexed { index, course ->
-    // 该星期几在 termStart 之后（含）的第一个日期
+    // 教学周映射：以“学期/教学周起点”所在周的周一为第 1 周的基准，
+    // 第 k 周、星期 w 的日期 = 起点周周一 + (k-1)*7 + (w-1)。
+    // 这样“第 1 周的周一/周三…”都落在同一周内，不会因为起点是周中而顺延到下周。
     val target = course.weekday // ISO 1=周一
-    var first = termStart
-    val delta = (target - first.dayOfWeek.value + 7) % 7
-    first = first.plusDays(delta.toLong())
+    val week1Monday = DateUtils.startOfWeek(termStart)
+    val first = week1Monday.plusDays((target - 1).toLong()) // 第 1 周该星期几
 
     val wMin = course.weeksMin ?: 1
     val wMax = course.weeksMax ?: 16

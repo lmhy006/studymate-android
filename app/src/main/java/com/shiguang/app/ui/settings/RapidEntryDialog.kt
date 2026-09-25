@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.shiguang.app.core.DateUtils
+import com.shiguang.app.data.AppSettings
 import com.shiguang.app.data.entity.ScheduleEntity
 import com.shiguang.app.data.import.ImportedCourse
 import com.shiguang.app.data.import.coursesToSchedules
@@ -58,7 +59,12 @@ fun RapidEntryDialog(
     var teacher by remember { mutableStateOf("") }
     var classroom by remember { mutableStateOf("") }
     var rows by remember { mutableStateOf<List<ImportedCourse>>(emptyList()) }
-    var termStart by remember { mutableStateOf(DateUtils.today()) }
+    var termStart by remember {
+        mutableStateOf(
+            AppSettings.termStartEpochDay.value?.let { DateUtils.fromEpochDay(it) }
+                ?: DateUtils.today()
+        )
+    }
     var showDatePicker by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -247,6 +253,11 @@ fun RapidEntryDialog(
                             )
                         }
                     }
+                    Text(
+                        text = "第1周以「教学周起点」对齐；此处修改会自动保存为默认（设置→日程设置 可改）。",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         },
@@ -275,7 +286,11 @@ fun RapidEntryDialog(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        pickerState.selectedDateMillis?.let { termStart = DateUtils.fromUtcMillis(it) }
+                        pickerState.selectedDateMillis?.let {
+                            val d = DateUtils.fromUtcMillis(it)
+                            termStart = d
+                            AppSettings.setTermStart(d.toEpochDay())
+                        }
                         showDatePicker = false
                     }
                 ) {

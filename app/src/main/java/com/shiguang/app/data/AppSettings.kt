@@ -24,6 +24,7 @@ object AppSettings {
     private const val KEY_SHOW_BORDER = "schedule_show_border"
     private const val KEY_SHOW_DIVIDER = "schedule_show_divider"
     private const val KEY_DDL_RELEASE_DAYS = "ddl_release_days"
+    private const val KEY_TERM_START = "term_start_epoch_day"
 
     private lateinit var prefs: android.content.SharedPreferences
 
@@ -50,6 +51,10 @@ object AppSettings {
     private val _ddlReleaseDays = MutableStateFlow(3)
     val ddlReleaseDays: StateFlow<Int> = _ddlReleaseDays.asStateFlow()
 
+    // 教学周起点（本学期第 1 周所在的日期，通常开学第一天）；未设置时导入按“今天”兜底
+    private val _termStartEpochDay = MutableStateFlow<Long?>(null)
+    val termStartEpochDay: StateFlow<Long?> = _termStartEpochDay.asStateFlow()
+
     /** 在 Application.onCreate 中初始化。 */
     fun init(context: Context) {
         prefs = context.applicationContext
@@ -61,6 +66,8 @@ object AppSettings {
         _showBorder.value = prefs.getBoolean(KEY_SHOW_BORDER, true)
         _showDivider.value = prefs.getBoolean(KEY_SHOW_DIVIDER, true)
         _ddlReleaseDays.value = prefs.getInt(KEY_DDL_RELEASE_DAYS, 3).coerceIn(1, 30)
+        _termStartEpochDay.value = prefs.getLong(KEY_TERM_START, Long.MIN_VALUE)
+            .takeIf { it != Long.MIN_VALUE }
     }
 
     fun setThemeMode(mode: String) {
@@ -97,5 +104,15 @@ object AppSettings {
         val v = days.coerceIn(1, 30)
         _ddlReleaseDays.value = v
         prefs.edit { putInt(KEY_DDL_RELEASE_DAYS, v) }
+    }
+
+    /** 设置教学周起点（第 1 周日期）；null 表示清除（导入回退按今天）。 */
+    fun setTermStart(epochDay: Long?) {
+        _termStartEpochDay.value = epochDay
+        if (epochDay == null) {
+            prefs.edit { remove(KEY_TERM_START) }
+        } else {
+            prefs.edit { putLong(KEY_TERM_START, epochDay) }
+        }
     }
 }

@@ -70,6 +70,19 @@ class CourseImportTest {
     }
 
     @Test
+    fun `教学周起点为周中时第1周不后移`() {
+        // 教学周起点=2025-09-03（周三）：第1周 = 该周周一 09-01 起的教学周。
+        // 周一的课第1周应落在 09-01，而不是顺延到下周 09-08（旧实现的 bug）。
+        val json = """{"courses":[{"name":"周一课","weekday":1,"start_section":1,"end_section":1}]}"""
+        val s = coursesToSchedules(parseCoursesJson(json).first, LocalDate.of(2025, 9, 3)).first()
+        assertEquals(LocalDate.of(2025, 9, 1), DateUtils.fromEpochDay(s.repeatStartEpochDay!!))
+        // 第2周 → 09-08
+        val json2 = """{"courses":[{"name":"周一课","weekday":1,"start_section":1,"end_section":1,"weeks":[2,2]}]}"""
+        val s2 = coursesToSchedules(parseCoursesJson(json2).first, LocalDate.of(2025, 9, 3)).first()
+        assertEquals(LocalDate.of(2025, 9, 8), DateUtils.fromEpochDay(s2.repeatStartEpochDay!!))
+    }
+
+    @Test
     fun `学期开始非周一时对齐到对应星期`() {
         val json = """{"courses":[{"name":"高数","weekday":3,"start_section":6,"end_section":6}]}"""
         val (courses, _) = parseCoursesJson(json)

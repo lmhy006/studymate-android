@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -21,6 +23,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.shiguang.app.BuildConfig
 import com.shiguang.app.StudyMateApp
+import com.shiguang.app.core.DateUtils
 import com.shiguang.app.data.AppSettings
 import com.shiguang.app.ui.schedule.ScheduleViewModel
 
@@ -65,6 +69,7 @@ fun SettingsScreen(
     var showUpdateDialog by remember { mutableStateOf(false) }
     var showImportDialog by remember { mutableStateOf(false) }
     var showRapidDialog by remember { mutableStateOf(false) }
+    var showTermPicker by remember { mutableStateOf(false) }
     val toastContext = LocalContext.current
 
     if (showUpdateDialog) {
@@ -150,6 +155,28 @@ fun SettingsScreen(
                         Text("+")
                     }
                 }
+
+                // 教学周起点（本学期第 1 周）
+                val termStart by AppSettings.termStartEpochDay.collectAsStateWithLifecycle()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "本学期教学周起点（第1周）",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = termStart?.let { DateUtils.formatFull(DateUtils.fromEpochDay(it)) }
+                                ?: "未设置（导入时按今天兜底）",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = { showTermPicker = true }) { Text("设置") }
+                    if (termStart != null) {
+                        TextButton(onClick = { AppSettings.setTermStart(null) }) { Text("清除") }
+                    }
+                }
+
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Row(
                     modifier = Modifier
@@ -225,6 +252,32 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+
+    if (showTermPicker) {
+        val initial = AppSettings.termStartEpochDay.value?.let { DateUtils.fromEpochDay(it) }
+            ?: DateUtils.today()
+        val picker = rememberDatePickerState(initialSelectedDateMillis = DateUtils.toUtcMillis(initial))
+        DatePickerDialog(
+            onDismissRequest = { showTermPicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        picker.selectedDateMillis?.let {
+                            AppSettings.setTermStart(DateUtils.fromUtcMillis(it).toEpochDay())
+                        }
+                        showTermPicker = false
+                    }
+                ) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTermPicker = false }) { Text("取消") }
+            },
+        ) {
+            DatePicker(state = picker)
         }
     }
 }
