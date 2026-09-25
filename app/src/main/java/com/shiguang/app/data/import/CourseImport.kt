@@ -23,11 +23,16 @@ data class ImportedCourse(
     val weeksMin: Int?,
     val weeksMax: Int?,
 ) {
+    /** 节次上限：兼容自定义时间表（默认 13 节，可最多 20 节）。 */
+    companion object {
+        const val MAX_SECTION = 20
+    }
+
     val isValid: Boolean
         get() = name.isNotBlank() &&
             weekday in 1..7 &&
-            startSection in 1..SchedulePeriods.DEFAULT.size &&
-            endSection in startSection..SchedulePeriods.DEFAULT.size
+            startSection in 1..MAX_SECTION &&
+            endSection in startSection..MAX_SECTION
 }
 
 /**
@@ -107,7 +112,11 @@ fun coursesToSchedules(
     courses: List<ImportedCourse>,
     termStart: LocalDate,
     periods: List<com.shiguang.app.core.SchedulePeriod> = SchedulePeriods.DEFAULT,
-): List<ScheduleEntity> = courses.mapIndexed { index, course ->
+): List<ScheduleEntity> = courses.mapNotNull { course ->
+    // 超出当前时间表节数的课程跳过（避免生成错误时间）
+    if (course.startSection > periods.size || course.endSection > periods.size) {
+        return@mapNotNull null
+    }
     // 教学周映射：以“学期/教学周起点”所在周的周一为第 1 周的基准，
     // 第 k 周、星期 w 的日期 = 起点周周一 + (k-1)*7 + (w-1)。
     // 这样“第 1 周的周一/周三…”都落在同一周内，不会因为起点是周中而顺延到下周。
@@ -134,7 +143,7 @@ fun coursesToSchedules(
     ScheduleEntity(
         title = course.name,
         location = course.classroom.ifBlank { null },
-        colorIndex = index % 8,
+        colorIndex = (course.weekday - 1) % 8,
         singleEpochDay = null,
         repeatStartEpochDay = rangeStart.toEpochDay(),
         repeatEndEpochDay = rangeEnd.toEpochDay(),

@@ -39,6 +39,31 @@ object SchedulePeriods {
             "${DateUtils.timeText(it.startMinute)},${DateUtils.timeText(it.endMinute)}"
         }
 
+    /** 追加新节时的默认时长（分钟）。 */
+    const val DEFAULT_DURATION_MINUTES = 45
+
+    /** 追加新节时与上一节的默认间隔（分钟）。 */
+    const val DEFAULT_GAP_MINUTES = 10
+
+    /** 新增一节的默认排布：接在最后一节之后（首节从 08:00 起）。 */
+    fun appendPeriod(periods: List<SchedulePeriod>, durationMinutes: Int = DEFAULT_DURATION_MINUTES): List<SchedulePeriod> {
+        val previous = periods.lastOrNull()
+        val startMinutes = if (previous == null) {
+            8 * 60
+        } else {
+            previous.endMinute + DEFAULT_GAP_MINUTES
+        }
+        return periods + SchedulePeriod(
+            number = periods.size + 1,
+            startMinute = startMinutes,
+            endMinute = startMinutes + durationMinutes.coerceAtLeast(1),
+        )
+    }
+
+    /** 按“每节固定时长”模式计算结束时间。 */
+    fun endWithDuration(startMinute: Int, durationMinutes: Int): Int =
+        startMinute + durationMinutes.coerceAtLeast(1)
+
     /**
      * 解析时间表文本（每行 "HH:mm,HH:mm"，节次先后有序且不重叠）；非法/为空返回 null。
      * 编号按解析顺序自动重新编号。

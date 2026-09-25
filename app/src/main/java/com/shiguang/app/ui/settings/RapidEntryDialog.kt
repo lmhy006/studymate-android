@@ -55,8 +55,9 @@ fun RapidEntryDialog(
 ) {
     var name by remember { mutableStateOf("") }
     var weekday by remember { mutableIntStateOf(1) }
+    val maxSection = periods.size.coerceAtLeast(1)
     var startSection by remember { mutableFloatStateOf(1f) }
-    var endSection by remember { mutableFloatStateOf(2f) }
+    var endSection by remember { mutableFloatStateOf(if (periods.size >= 2) 2f else 1f) }
     var weeksMinText by remember { mutableStateOf("1") }
     var weeksMaxText by remember { mutableStateOf("16") }
     var teacher by remember { mutableStateOf("") }
@@ -124,8 +125,8 @@ fun RapidEntryDialog(
                         startSection = it
                         if (endSection < it) endSection = it
                     },
-                    valueRange = 1f..13f,
-                    steps = 11,
+                    valueRange = 1f..maxSection.toFloat(),
+                    steps = (maxSection - 2).coerceAtLeast(0),
                 )
                 Slider(
                     value = endSection,
@@ -133,8 +134,8 @@ fun RapidEntryDialog(
                         endSection = it
                         if (it < startSection) startSection = it
                     },
-                    valueRange = 1f..13f,
-                    steps = 11,
+                    valueRange = 1f..maxSection.toFloat(),
+                    steps = (maxSection - 2).coerceAtLeast(0),
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

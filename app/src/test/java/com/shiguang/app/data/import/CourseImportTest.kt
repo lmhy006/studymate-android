@@ -83,6 +83,21 @@ class CourseImportTest {
     }
 
     @Test
+    fun `超出当前时间表节数的课程在转换时被跳过`() {
+        // 默认 13 节：第 14 节的课应被跳过，其余保留
+        val json = """{"courses":[
+            {"name":"正常课","weekday":1,"start_section":1,"end_section":2},
+            {"name":"超节课","weekday":2,"start_section":14,"end_section":14}
+        ]}"""
+        val (courses, errors) = parseCoursesJson(json)
+        assertEquals(2, courses.size) // 解析阶段 1..20 均视为结构合法
+        assertTrue(errors.isEmpty())
+        val list = coursesToSchedules(courses, LocalDate.of(2025, 9, 1))
+        assertEquals(1, list.size)
+        assertEquals("正常课", list.first().title)
+    }
+
+    @Test
     fun `学期开始非周一时对齐到对应星期`() {
         val json = """{"courses":[{"name":"高数","weekday":3,"start_section":6,"end_section":6}]}"""
         val (courses, _) = parseCoursesJson(json)
