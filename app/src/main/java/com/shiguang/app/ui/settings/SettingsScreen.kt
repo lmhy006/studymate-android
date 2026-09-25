@@ -175,7 +175,7 @@ fun SettingsScreen(
             SettingsCard(title = "关于") {
                 AboutRow(
                     key = "版本",
-                    value = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                    value = "v${BuildConfig.VERSION_NAME}",
                 )
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 Row(

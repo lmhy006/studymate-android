@@ -91,10 +91,10 @@
 
 BIT101 的更新来自**它自己的服务器**（`android.bit101.cn`，国内直连稳定），而我们此前只有 **GitHub** 单一来源——国内正常网络下 `api.github.com` 与 `github.com` 常被干扰，所以需要代理才能更新。
 
-**v1.0.1 起已支持双源自动切换**：
-1. 检查更新优先请求 GitHub；失败自动改请求 **Gitee（码云）**；
-2. 下载 APK 时若 GitHub 资产下载失败，也会自动回退到 Gitee 资产；
-3. 使用 Gitee 源需把本仓库镜像到 Gitee，并发布同名 Release（tag `v` 前缀 + 上传 `.apk` 资产），仓库名配置在 `AppConfig.GITEE_REPO`（默认与 GitHub 同名 `lmhy006/studymate-android`）。
+**v1.0.2 起以 Gitee 为默认源、GitHub 为备用**：
+1. 检查更新**默认请求 Gitee（码云）**（`AppConfig.GITEE_REPO = zhindex/studymate-android`，国内直连稳定）；Gitee 失败才尝试 GitHub；
+2. 下载 APK 时默认源的资产下载失败，自动回退到 GitHub 资产；
+3. 使用前提：在 Gitee 仓库 `zhindex/studymate-android` 发布同名 Release（tag `v` 前缀 + 上传 `.apk` 资产），GitHub 侧同样发布一份即可双源可用。
 
 ---
 

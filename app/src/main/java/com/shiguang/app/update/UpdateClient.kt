@@ -35,8 +35,8 @@ sealed interface FetchResult {
 }
 
 /**
- * 应用内检查更新：GitHub 优先，失败自动切换 Gitee（码云）备用源（国内直连友好）；
- * 下载 APK 时主源失败也会回退到备用源。
+ * 应用内检查更新：**Gitee（码云）为默认源**（国内直连稳定），GitHub 为备用；
+ * 检查更新与下载 APK 都会在默认源失败时自动回退到备用源。
  * 使用 HttpURLConnection（stdlib），不引入额外网络库。
  */
 object UpdateClient {
@@ -45,21 +45,21 @@ object UpdateClient {
     private const val GITEE_API = "https://gitee.com/api/v5/repos/"
     private const val USER_AGENT = "StudyMate-updater"
 
-    /** 合并双源结果：任一源返回 Release 即采用（GitHub 优先）；都在或有一源为 NoRelease 时视为无发布；都失败为 Error。 */
+    /** 合并双源结果：任一源返回 Release 时，优先采用 Gitee（默认源）。 */
     internal fun pickBest(github: FetchResult, gitee: FetchResult): FetchResult = when {
-        github is FetchResult.Release -> github
         gitee is FetchResult.Release -> gitee
+        github is FetchResult.Release -> github
         github == FetchResult.NoRelease || gitee == FetchResult.NoRelease -> FetchResult.NoRelease
         else -> FetchResult.Error
     }
 
-    /** GitHub -> Gitee 依次尝试，返回较优结果。 */
+    /** Gitee（默认） -> GitHub（备用）依次尝试，返回较优结果。 */
     suspend fun fetchLatest(): FetchResult = withContext(Dispatchers.IO) {
-        val github = fetchLatestFrom("$GITHUB_API${AppConfig.GITHUB_REPO}/releases/latest")
-        if (github is FetchResult.Release) {
-            github
+        val gitee = fetchLatestFrom("$GITEE_API${AppConfig.GITEE_REPO}/releases/latest")
+        if (gitee is FetchResult.Release) {
+            gitee
         } else {
-            val gitee = fetchLatestFrom("$GITEE_API${AppConfig.GITEE_REPO}/releases/latest")
+            val github = fetchLatestFrom("$GITHUB_API${AppConfig.GITHUB_REPO}/releases/latest")
             pickBest(github, gitee)
         }
     }
@@ -127,17 +127,17 @@ object UpdateClient {
         }.getOrNull()
     }
 
-    /** 主源（GitHub）下载失败时回退到备用源（Gitee）再试。 */
+    /** 默认源（Gitee）下载失败时回退到备用源（GitHub）再试。 */
     suspend fun downloadApkWithFallback(context: Context, primaryUrl: String?): File? {
         if (primaryUrl == null) return null
         val direct = downloadApk(context, primaryUrl)
         if (direct != null) return direct
-        // 主源下载失败：从 Gitee 备用源取资产 URL 再试
-        return downloadApkFromGitee(context)
+        // 默认源下载失败：从 GitHub 备用源取资产 URL 再试
+        return downloadApkFromGithub(context)
     }
 
-    private suspend fun downloadApkFromGitee(context: Context): File? {
-        val latest = fetchLatestFrom("$GITEE_API${AppConfig.GITEE_REPO}/releases/latest")
+    private suspend fun downloadApkFromGithub(context: Context): File? {
+        val latest = fetchLatestFrom("$GITHUB_API${AppConfig.GITHUB_REPO}/releases/latest")
         val altUrl = (latest as? FetchResult.Release)?.info?.apkUrl ?: return null
         return downloadApk(context, altUrl)
     }

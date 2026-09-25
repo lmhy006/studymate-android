@@ -5,12 +5,12 @@ package com.shiguang.app
  */
 object AppConfig {
 
-    /** GitHub 仓库，用于应用内检查更新（读取该仓库的 latest release 及其 APK 资产）。 */
+    /** GitHub 仓库（备用源：检查更新时 Gitee 失败才尝试）。 */
     const val GITHUB_REPO = "lmhy006/studymate-android"
 
     /**
-     * Gitee（码云）备用源，与 GitHub 同结构：国内网络 GitHub 不通时自动切换。
-     * 需要把本仓库镜像到 Gitee 并同步发布同名 Release 与 APK 资产。
+     * Gitee（码云）更新源（默认优先：国内直连稳定）。与 GitHub 同结构：
+     * 仓库需发布同名 Release（tag 带 v 前缀）并上传 .apk 资产。
      */
-    const val GITEE_REPO = "lmhy006/studymate-android"
+    const val GITEE_REPO = "zhindex/studymate-android"
 }
