@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.shiguang.app.core.CourseColor
 import com.shiguang.app.core.DateUtils
 import com.shiguang.app.core.WeekParity
 import com.shiguang.app.core.WeekdayMask
@@ -82,7 +83,9 @@ fun ScheduleEditSheet(
 ) {
     var title by remember { mutableStateOf(editing?.title ?: "") }
     var location by remember { mutableStateOf(editing?.location ?: "") }
-    var colorIndex by remember { mutableIntStateOf(editing?.colorIndex ?: 0) }
+    var colorIndex by remember { mutableIntStateOf(editing?.colorIndex ?: CourseColor.indexForTitle(editing?.title ?: "")) }
+    /** 颜色是否被手动指定：手动指定后不再随标题自动变化（新日程默认跟随标题哈希，保证同名同色）。 */
+    var colorPicked by remember { mutableStateOf(editing != null) }
 
     var recurring by remember { mutableStateOf(editing?.isRecurring ?: false) }
 
@@ -139,7 +142,10 @@ fun ScheduleEditSheet(
 
             OutlinedTextField(
                 value = title,
-                onValueChange = { title = it },
+                onValueChange = {
+                    title = it
+                    if (!colorPicked) colorIndex = CourseColor.indexForTitle(it)
+                },
                 label = { Text("标题，如：线性代数") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -175,7 +181,10 @@ fun ScheduleEditSheet(
                                 },
                                 shape = CircleShape,
                             )
-                            .clickable { colorIndex = index },
+                            .clickable {
+                            colorIndex = index
+                            colorPicked = true
+                        },
                         contentAlignment = Alignment.Center,
                     ) {
                         if (index == colorIndex) {

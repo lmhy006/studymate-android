@@ -42,6 +42,7 @@ import com.shiguang.app.data.AppSettings
 import com.shiguang.app.data.entity.ScheduleEntity
 import com.shiguang.app.data.import.ImportedCourse
 import com.shiguang.app.data.import.coursesToSchedules
+import kotlin.math.roundToInt
 
 /**
  * 逐课速录课表：表单式录入（课程名 / 星期 / 起止节次 / 教学周 / 教师 / 教室），
@@ -140,7 +141,7 @@ fun RapidEntryDialog(
                 }
 
                 Text(
-                    text = "节次：第${startSection.toInt()}节 – 第${endSection.toInt()}节",
+                    text = "节次：第${startSection.roundToInt()}节 – 第${endSection.roundToInt()}节",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -206,8 +207,8 @@ fun RapidEntryDialog(
 
                 Button(
                     onClick = {
-                        val s = startSection.toInt()
-                        val e = endSection.toInt()
+                        val s = startSection.roundToInt()
+                        val e = endSection.roundToInt()
                         if (name.isBlank()) {
                             error = "请填写课程名"
                             return@Button

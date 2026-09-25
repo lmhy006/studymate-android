@@ -1,5 +1,6 @@
 package com.shiguang.app.data.import
 
+import com.shiguang.app.core.CourseColor
 import com.shiguang.app.core.DateUtils
 import com.shiguang.app.core.SchedulePeriods
 import com.shiguang.app.core.WeekParity
@@ -156,7 +157,7 @@ fun coursesToSchedules(
     ScheduleEntity(
         title = course.name,
         location = course.classroom.ifBlank { null },
-        colorIndex = (course.weekday - 1) % 8,
+        colorIndex = CourseColor.indexForTitle(course.name),
         singleEpochDay = null,
         repeatStartEpochDay = rangeStart.toEpochDay(),
         repeatEndEpochDay = rangeEnd.toEpochDay(),

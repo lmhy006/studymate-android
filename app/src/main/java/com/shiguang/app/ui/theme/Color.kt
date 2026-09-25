@@ -33,7 +33,8 @@ val DarkOutlineVariant = Color(0xFF2A2F3A)
 val DarkError = Color(0xFFF28B82)
 
 /**
- * 日程颜色盘（8 色，极简低饱和）。
+ * 日程颜色盘（12 色，极简低饱和）。
+ * 同名课程按课程名哈希取同一颜色；12 色使不同课程的撞色概率明显低于 8 色。
  */
 val SchedulePalette = listOf(
     Color(0xFF4460F0), // 靛蓝
@@ -44,6 +45,10 @@ val SchedulePalette = listOf(
     Color(0xFF2A9DBB), // 青
     Color(0xFFC7504E), // 红
     Color(0xFF8A94A6), // 灰
+    Color(0xFF8FA83C), // 黄绿
+    Color(0xFF3E8E9E), // 深青
+    Color(0xFFA06B8E), // 紫红
+    Color(0xFFA87B51), // 棕
 )
 
 fun scheduleColor(index: Int): Color =
