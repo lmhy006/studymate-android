@@ -11,11 +11,13 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.glance.appwidget.updateAll
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
 /**
  * 小组件刷新调度：
- * - 每日周期任务保证天数在跨天时更新；
+ * - 每日周期任务保证天数在跨天时更新（播种到次日 00:10，每次 App 启动重置）；
  * - 一次性任务用于数据变化/系统事件后的即时刷新。
  */
 object WidgetRefreshHelper {
@@ -31,9 +33,16 @@ object WidgetRefreshHelper {
             .enqueueUniqueWork(ONESHOT_WORK, ExistingWorkPolicy.REPLACE, request)
     }
 
+    /** 播种每日周期任务：对齐到下一个本地 00:10，首次就发生在跨天之后的几分钟内。 */
     fun scheduleDaily(context: Context) {
+        val now = LocalDateTime.now()
+        var next = now.toLocalDate().atTime(0, 10)
+        if (!next.isAfter(now)) next = next.plusDays(1)
+        val delayMs = (next.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() -
+            System.currentTimeMillis())
+            .coerceAtLeast(TimeUnit.MINUTES.toMillis(15))
         val request = PeriodicWorkRequestBuilder<CountdownWidgetWorker>(24, TimeUnit.HOURS)
-            .setInitialDelay(1, TimeUnit.HOURS)
+            .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
             .build()
         WorkManager.getInstance(context)
             .enqueueUniquePeriodicWork(PERIODIC_WORK, ExistingPeriodicWorkPolicy.UPDATE, request)

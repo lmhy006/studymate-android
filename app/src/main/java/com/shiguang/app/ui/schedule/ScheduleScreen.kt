@@ -544,7 +544,7 @@ private fun WeekMode(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            // 节次轴：第N节 + 时间拆两行（上课 / -下课），窄栏
+            // 节次轴：第N节 + 时间拆两行（上课 / -下课），紧凑行高避免 40dp 行内被裁切
             Column(Modifier.width(AXIS_WIDTH)) {
                 periods.forEach { period ->
                     Column(
@@ -554,20 +554,20 @@ private fun WeekMode(
                     ) {
                         Text(
                             text = "第${period.number}节",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, lineHeight = 9.sp),
                             maxLines = 1,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
                             text = DateUtils.timeText(period.startMinute),
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, lineHeight = 10.sp),
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
                             text = "-${DateUtils.timeText(period.endMinute)}",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, lineHeight = 9.sp),
                             maxLines = 1,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         )
