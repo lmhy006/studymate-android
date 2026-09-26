@@ -65,6 +65,7 @@ fun SettingsScreen(
     val highlightToday by AppSettings.highlightToday.collectAsStateWithLifecycle()
     val showBorder by AppSettings.showBorder.collectAsStateWithLifecycle()
     val showDivider by AppSettings.showDivider.collectAsStateWithLifecycle()
+    val highlightCountdown by AppSettings.highlightCountdown.collectAsStateWithLifecycle()
     val timeTable by AppSettings.timeTable.collectAsStateWithLifecycle()
 
     var showUpdateDialog by remember { mutableStateOf(false) }
@@ -145,6 +146,7 @@ fun SettingsScreen(
                 SettingSwitch("显示周六", showSaturday, AppSettings::setShowSaturday)
                 SettingSwitch("显示周日", showSunday, AppSettings::setShowSunday)
                 SettingSwitch("高亮今日", highlightToday, AppSettings::setHighlightToday)
+                SettingSwitch("高亮倒数日当天", highlightCountdown, AppSettings::setHighlightCountdown)
                 SettingSwitch("显示节次分界线", showDivider, AppSettings::setShowDivider)
                 SettingSwitch("显示边框", showBorder, AppSettings::setShowBorder)
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))

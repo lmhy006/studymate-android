@@ -27,6 +27,7 @@ import java.time.YearMonth
 
 /**
  * 通用月历（周一开头，6 行 42 格）。
+ * @param highlight 返回 true 的日期用第三强调色圈出（如倒数日当天，与今日的主色区分）。
  * mark：在每个日期下方绘制的标记（打卡圆点 / 日程计数等），高度 6dp。
  */
 @Composable
@@ -34,6 +35,7 @@ fun MonthCalendar(
     month: YearMonth,
     today: LocalDate,
     modifier: Modifier = Modifier,
+    highlight: ((LocalDate) -> Boolean)? = null,
     mark: (@Composable (date: LocalDate) -> Unit)? = null,
     onDayClick: ((LocalDate) -> Unit)? = null,
 ) {
@@ -73,7 +75,12 @@ fun MonthCalendar(
                                     .size(28.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (isToday) MaterialTheme.colorScheme.primary else Color.Transparent
+                                        when {
+                                            isToday -> MaterialTheme.colorScheme.primary
+                                            highlight?.invoke(date) == true ->
+                                                MaterialTheme.colorScheme.tertiary
+                                            else -> Color.Transparent
+                                        }
                                     ),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -82,6 +89,8 @@ fun MonthCalendar(
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = when {
                                         isToday -> MaterialTheme.colorScheme.onPrimary
+                                        highlight?.invoke(date) == true ->
+                                            MaterialTheme.colorScheme.onTertiary
                                         !inMonth -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
                                         else -> MaterialTheme.colorScheme.onSurface
                                     },

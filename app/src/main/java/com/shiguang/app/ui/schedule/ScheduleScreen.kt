@@ -32,6 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -68,6 +69,7 @@ import com.shiguang.app.data.entity.DdlEntity
 import com.shiguang.app.data.entity.ScheduleEntity
 import com.shiguang.app.ui.components.EmptyHint
 import com.shiguang.app.ui.components.MonthCalendar
+import com.shiguang.app.ui.countdown.CountdownViewModel
 import com.shiguang.app.ui.ddl.DdlEditSheet
 import com.shiguang.app.ui.ddl.DdlView
 import com.shiguang.app.ui.ddl.DdlViewModel
@@ -81,8 +83,11 @@ private const val VIEW_WEEK = 0
 private const val VIEW_MONTH = 1
 private const val VIEW_DDL = 2
 
-/** 周视图每个节次行的高度（仿 BIT101 节次课表）。 */
-private val PERIOD_ROW_HEIGHT = 56.dp
+/** 周视图每个节次行的高度（压缩后一屏尽量放下 13 节）。 */
+private val PERIOD_ROW_HEIGHT = 40.dp
+
+/** 周视图左侧节次轴宽度（窄化，时间拆两行）。 */
+private val AXIS_WIDTH = 46.dp
 
 /** 点击周视图空白处预填的“新建日程”数据。 */
 data class PrefillData(val date: LocalDate, val minute: Int)
@@ -100,9 +105,17 @@ fun ScheduleScreen(
             (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as StudyMateApp).container
         )
     },
+    countdownViewModel: CountdownViewModel = viewModel {
+        CountdownViewModel(
+            (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as StudyMateApp).container
+        )
+    },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val ddlState by ddlViewModel.uiState.collectAsStateWithLifecycle()
+    val countdownItems by countdownViewModel.items.collectAsStateWithLifecycle()
+    // 倒数日当天（epochDay 集合），用于日程高亮
+    val countdownDays = remember(countdownItems) { countdownItems.map { it.targetEpochDay }.toSet() }
 
     // 日程显示设置（设置 → 日程设置）
     val showSaturday by AppSettings.showSaturday.collectAsStateWithLifecycle()
@@ -111,10 +124,17 @@ fun ScheduleScreen(
     val showBorder by AppSettings.showBorder.collectAsStateWithLifecycle()
     val showDivider by AppSettings.showDivider.collectAsStateWithLifecycle()
     val timeTable by AppSettings.timeTable.collectAsStateWithLifecycle()
+    val highlightCountdown by AppSettings.highlightCountdown.collectAsStateWithLifecycle()
 
     var viewMode by rememberSaveable { mutableIntStateOf(VIEW_WEEK) }
     var weekAnchorStr by rememberSaveable { mutableStateOf(DateUtils.today().toString()) }
     var monthStr by rememberSaveable { mutableStateOf(YearMonth.now().toString()) }
+
+    // 周切换（头部箭头 + FAB 上方双箭头共用同一逻辑）
+    val moveWeek: (Long) -> Unit = { delta ->
+        val anchor = DateUtils.weekOf(LocalDate.parse(weekAnchorStr)).first()
+        weekAnchorStr = anchor.plusDays(delta).toString()
+    }
 
     var selectedDay by remember { mutableStateOf<LocalDate?>(null) }
     var editing by remember { mutableStateOf<ScheduleEntity?>(null) }
@@ -325,13 +345,15 @@ fun ScheduleScreen(
                         week = week,
                         occurrences = occurrences,
                         periods = timeTable,
+                        countdownDays = countdownDays,
+                        highlightCountdown = highlightCountdown,
                         showSaturday = showSaturday,
                         showSunday = showSunday,
                         highlightToday = highlightToday,
                         showBorder = showBorder,
                         showDivider = showDivider,
-                        onPrev = { weekAnchorStr = week.first().minusDays(7).toString() },
-                        onNext = { weekAnchorStr = week.first().plusDays(7).toString() },
+                        onPrev = { moveWeek(-7) },
+                        onNext = { moveWeek(7) },
                         onToday = { weekAnchorStr = DateUtils.today().toString() },
                         onEventClick = { detail = it },
                         onSlotClick = { date, minute -> prefill = PrefillData(date, minute) },
@@ -362,6 +384,8 @@ fun ScheduleScreen(
                         occurrences = occurrences,
                         selectedDay = selected,
                         dayEvents = dayEvents,
+                        countdownDays = countdownDays,
+                        highlightCountdown = highlightCountdown,
                         onPrev = { monthStr = month.minusMonths(1).toString() },
                         onNext = { monthStr = month.plusMonths(1).toString() },
                         onToday = { monthStr = YearMonth.now().toString(); selectedDay = null },
@@ -389,6 +413,24 @@ fun ScheduleScreen(
             Icon(Icons.Filled.Add, contentDescription = "添加日程")
         }
 
+        // 仿 BIT101：FAB 上方叠放 左箭头（上一周）/ 右箭头（下一周），快捷切换周
+        if (viewMode == VIEW_WEEK) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 24.dp, bottom = 96.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                SmallFloatingActionButton(onClick = { moveWeek(7) }) {
+                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = "下一周")
+                }
+                SmallFloatingActionButton(onClick = { moveWeek(-7) }) {
+                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, contentDescription = "上一周")
+                }
+            }
+        }
+
         androidx.compose.material3.SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 80.dp),
@@ -405,6 +447,8 @@ private fun WeekMode(
     week: List<LocalDate>,
     occurrences: List<ScheduleOccurrence>,
     periods: List<SchedulePeriod>,
+    countdownDays: Set<Long>,
+    highlightCountdown: Boolean,
     showSaturday: Boolean,
     showSunday: Boolean,
     highlightToday: Boolean,
@@ -427,6 +471,7 @@ private fun WeekMode(
     }
     val outlineVariant = MaterialTheme.colorScheme.outlineVariant
     val primary = MaterialTheme.colorScheme.primary
+    val tertiary = MaterialTheme.colorScheme.tertiary
 
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -447,25 +492,42 @@ private fun WeekMode(
             TextButton(onClick = onToday) { Text("本周") }
         }
 
-        // 表头：仅显示可见的星期
+        // 表头：仅显示可见的星期；倒数日当天用第三强调色（与今日主色区分）
         Row(Modifier.fillMaxWidth()) {
-            Spacer(Modifier.width(64.dp))
+            Spacer(Modifier.width(AXIS_WIDTH))
             visibleDays.forEach { day ->
+                val isToday = day == today
+                val isCountdown = highlightCountdown && !isToday && day.toEpochDay() in countdownDays
                 Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
                         text = DateUtils.weekdayName(day),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (day == today) primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = if (day == today) FontWeight.Bold else FontWeight.Normal,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when {
+                            isToday -> primary
+                            isCountdown -> tertiary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        fontWeight = if (isToday || isCountdown) FontWeight.Bold else FontWeight.Normal,
                     )
                     Text(
                         text = day.dayOfMonth.toString(),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color = if (day == today) primary else MaterialTheme.colorScheme.onSurface,
+                        color = when {
+                            isToday -> primary
+                            isCountdown -> tertiary
+                            else -> MaterialTheme.colorScheme.onSurface
+                        },
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 2.dp)
+                            .size(if (isCountdown) 4.dp else 0.dp)
+                            .clip(CircleShape)
+                            .background(tertiary),
                     )
                 }
             }
@@ -482,22 +544,31 @@ private fun WeekMode(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            // 节次轴：第N节 + 时间
-            Column(Modifier.width(64.dp)) {
+            // 节次轴：第N节 + 时间拆两行（上课 / -下课），窄栏
+            Column(Modifier.width(AXIS_WIDTH)) {
                 periods.forEach { period ->
                     Column(
                         modifier = Modifier.height(PERIOD_ROW_HEIGHT),
                         verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
                             text = "第${period.number}节",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            maxLines = 1,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
-                            text = SchedulePeriods.periodRangeText(period),
+                            text = DateUtils.timeText(period.startMinute),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = "-${DateUtils.timeText(period.endMinute)}",
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            maxLines = 1,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         )
                     }
@@ -544,32 +615,62 @@ private fun WeekMode(
                     // 日程块：按起止时间吸附到节次行
                     dayEvents.forEach { event ->
                         val range = SchedulePeriods.periodRange(event.startMinute, event.endMinute, periods)
+                        val rowSpan = range.last - range.first + 1
                         Surface(
                             onClick = { onEventClick(event) },
                             modifier = Modifier
                                 .offset(y = PERIOD_ROW_HEIGHT * range.first)
                                 .fillMaxWidth()
-                                .height(PERIOD_ROW_HEIGHT * (range.last - range.first + 1) - 4.dp)
+                                .height(PERIOD_ROW_HEIGHT * rowSpan - 2.dp)
                                 .padding(horizontal = 1.dp),
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(5.dp),
                             color = scheduleColor(event.colorIndex),
                         ) {
-                            Column(Modifier.padding(horizontal = 5.dp, vertical = 3.dp)) {
+                            Column(Modifier.padding(horizontal = 4.dp, vertical = 2.dp)) {
                                 Text(
                                     text = event.title,
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color.White,
-                                    maxLines = 1,
+                                    maxLines = if (rowSpan >= 2) 3 else 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                Text(
-                                    text = "${DateUtils.timeText(event.startMinute)}–${DateUtils.timeText(event.endMinute)}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White.copy(alpha = 0.85f),
-                                    maxLines = 1,
-                                )
+                                event.location?.takeIf { it.isNotBlank() }?.let {
+                                    Text(
+                                        text = it,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
+                                        color = Color.White.copy(alpha = 0.9f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                if (rowSpan >= 2) {
+                                    Text(
+                                        text = "${DateUtils.timeText(event.startMinute)}-${DateUtils.timeText(event.endMinute)}",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
+                                        color = Color.White.copy(alpha = 0.8f),
+                                        maxLines = 1,
+                                    )
+                                }
                             }
+                        }
+                    }
+                    // 当前时间横线（黑色，仿 BIT101）
+                    val dayStartMinute = periods.first().startMinute
+                    val dayEndMinute = periods.last().endMinute
+                    val nowMinute = DateUtils.fromEpochMillis(System.currentTimeMillis()).hour * 60 +
+                        DateUtils.fromEpochMillis(System.currentTimeMillis()).minute
+                    if (nowMinute in dayStartMinute..dayEndMinute) {
+                        val frac = (nowMinute - dayStartMinute).toFloat() /
+                            (dayEndMinute - dayStartMinute).coerceAtLeast(1)
+                        val lineY = PERIOD_ROW_HEIGHT * periods.size * frac
+                        Canvas(Modifier.fillMaxSize()) {
+                            drawLine(
+                                color = Color.Black,
+                                start = Offset(0f, lineY.toPx()),
+                                end = Offset(size.width, lineY.toPx()),
+                                strokeWidth = 2.dp.toPx(),
+                            )
                         }
                     }
                 }
@@ -588,6 +689,8 @@ private fun MonthMode(
     occurrences: List<ScheduleOccurrence>,
     selectedDay: LocalDate,
     dayEvents: List<ScheduleOccurrence>,
+    countdownDays: Set<Long>,
+    highlightCountdown: Boolean,
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onToday: () -> Unit,
@@ -618,6 +721,7 @@ private fun MonthMode(
             month = month,
             today = DateUtils.today(),
             modifier = Modifier.fillMaxWidth(),
+            highlight = if (highlightCountdown) { date -> date.toEpochDay() in countdownDays } else null,
             mark = { date ->
                 val count = occurrences.count { it.date == date }
                 if (count > 0) {

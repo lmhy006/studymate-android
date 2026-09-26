@@ -28,6 +28,7 @@ object AppSettings {
     private const val KEY_DDL_RELEASE_DAYS = "ddl_release_days"
     private const val KEY_TERM_START = "term_start_epoch_day"
     private const val KEY_TIME_TABLE = "time_table"
+    private const val KEY_HIGHLIGHT_COUNTDOWN = "schedule_highlight_countdown"
 
     private lateinit var prefs: android.content.SharedPreferences
 
@@ -62,6 +63,10 @@ object AppSettings {
     private val _timeTable = MutableStateFlow(SchedulePeriods.DEFAULT)
     val timeTable: StateFlow<List<SchedulePeriod>> = _timeTable.asStateFlow()
 
+    // 日程中高亮“倒数日当天”（与今日高亮区分），默认开启
+    private val _highlightCountdown = MutableStateFlow(true)
+    val highlightCountdown: StateFlow<Boolean> = _highlightCountdown.asStateFlow()
+
     /** 在 Application.onCreate 中初始化。 */
     fun init(context: Context) {
         prefs = context.applicationContext
@@ -77,6 +82,7 @@ object AppSettings {
             .takeIf { it != Long.MIN_VALUE }
         _timeTable.value = SchedulePeriods.parseTimeTable(prefs.getString(KEY_TIME_TABLE, null))
             ?: SchedulePeriods.DEFAULT
+        _highlightCountdown.value = prefs.getBoolean(KEY_HIGHLIGHT_COUNTDOWN, true)
     }
 
     fun setThemeMode(mode: String) {
@@ -132,4 +138,9 @@ object AppSettings {
     }
 
     fun resetTimeTable() = setTimeTable(SchedulePeriods.DEFAULT)
+
+    fun setHighlightCountdown(value: Boolean) {
+        _highlightCountdown.value = value
+        prefs.edit { putBoolean(KEY_HIGHLIGHT_COUNTDOWN, value) }
+    }
 }
